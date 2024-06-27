@@ -2,16 +2,21 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <cmath>
+#include <map>
 
 
 struct Atom {
     char chain;
-    int atom_index;
-    int res_index;
+    int resSeq;
     float center_x;
     float center_y;
     float center_z;
 };
+
+float findDistance(Atom a1, Atom a2) {
+    return std::sqrt(std::pow(a2.center_x - a1.center_x, 2) + std::pow(a2.center_y - a1.center_y, 2) + std::pow(a2.center_z - a1.center_z, 2));
+}
 
 // Function for obtaining values from the specified column and writing them to the Atom structure
 std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
@@ -45,8 +50,7 @@ std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
         if (cells.size() >= 15) {
             Atom atom;
             atom.chain = cells[0][0];
-            atom.atom_index = std::stoi(cells[7]);
-            atom.res_index = std::stoi(cells[8]);
+            atom.resSeq = std::stoi(cells[1]);
             atom.center_x = std::stof(cells[11]);
             atom.center_y = std::stof(cells[12]);
             atom.center_z = std::stof(cells[13]);
@@ -56,6 +60,17 @@ std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
     }
 
     return atoms;
+}
+
+std::map<std::pair<char, int>, std::vector<Atom>> groupAtoms(const std::vector<Atom>& atoms) {
+    std::map<std::pair<char, int>, std::vector<Atom>> groupedAtoms;
+    
+    for (const Atom& atom : atoms) {
+        std::pair<char, int> key = std::make_pair(atom.chain, atom.resSeq);
+        groupedAtoms[key].push_back(atom);
+    }
+    
+    return groupedAtoms;
 }
 
 int main() {
@@ -77,7 +92,20 @@ int main() {
     //               << atoms[i].center_z << std::endl;
     // }
 
-    std::cout <<"atoms[141].center_x = "<< atoms[141].center_x <<"\natoms[811].chain = "<< atoms[811].chain <<"\natoms[2].center_z = "<< atoms[2].center_z <<"\natoms[2].res_index = "<< atoms[2].res_index;
+    // std::map<std::pair<char, int>, std::vector<Atom>> groupedAtoms = groupAtoms(atoms);
 
+    // for (const auto& entry : groupedAtoms) {
+    //     std::pair<char, int> key = entry.first;
+    //     const std::vector<Atom>& group = entry.second;
+    //     std::cout << "Key: (" << key.first << ", " << key.second << ")\n";
+    //     for (const Atom& atom : group) {
+    //         std::cout << "  Atom: { chain: " << atom.chain << ", resSeq: " << atom.resSeq
+    //                   << ", center_x: " << atom.center_x << ", center_y: " << atom.center_y
+    //                   << ", center_z: " << atom.center_z << " }\n";
+    //     }
+    // }
+
+    std::cout << "the distance between atom 1 and atom 2 = " << findDistance(atoms[1], atoms[2]) <<"\n";
+    
     return 0;
 }
