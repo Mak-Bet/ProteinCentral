@@ -1,53 +1,9 @@
-//
-//  main.cpp
-//  Internship-project-ljk
-//
-//  Created by Mak-Bet on 26/06/2024.
-//
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
-using namespace std;
 
-// Function to retrieve values from a specified column
-vector<string> getColumnValuesFromTSV(const string& filename, int col) {
-    ifstream file(filename);
-    vector<string> columnValues;
 
-    if (!file.is_open()) {
-        cerr << "Unable to open file: " << filename << endl;
-        return columnValues;
-    }
-
-    string line;
-    bool isFirstLine = true;
-
-    while (getline(file, line)) {
-        if (isFirstLine) {
-            // Skip the first line (header)
-            isFirstLine = false;
-            continue;
-        }
-
-        stringstream lineStream(line);
-        string cell;
-        int currentCol = 0;
-
-        while (lineStream >> cell) {
-            if (currentCol == col) {
-                columnValues.push_back(cell);
-                break;
-            }
-            currentCol++;
-        }
-    }
-
-    return columnValues;
-}
-
-//Initialisation of the atom structure (can be further developed)
 struct Atom {
     char chain;
     int atom_index;
@@ -57,55 +13,71 @@ struct Atom {
     float center_z;
 };
 
+// Function for obtaining values from the specified column and writing them to the Atom structure
+std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
+    std::ifstream file(filename);
+    std::vector<Atom> atoms;
+
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file: " << filename << std::endl;
+        return atoms;
+    }
+
+    std::string line;
+    bool isFirstLine = true;
+
+    while (std::getline(file, line)) {
+        if (isFirstLine) {
+            // Skip the first line (header)
+            isFirstLine = false;
+            continue;
+        }
+
+        std::stringstream lineStream(line);
+        std::string cell;
+        std::vector<std::string> cells;
+
+        // Splitting a row into cells
+        while (lineStream >> cell) {
+            cells.push_back(cell);
+        }
+
+        if (cells.size() >= 15) {
+            Atom atom;
+            atom.chain = cells[0][0];
+            atom.atom_index = std::stoi(cells[7]);
+            atom.res_index = std::stoi(cells[8]);
+            atom.center_x = std::stof(cells[11]);
+            atom.center_y = std::stof(cells[12]);
+            atom.center_z = std::stof(cells[13]);
+
+            atoms.push_back(atom);
+        }
+    }
+
+    return atoms;
+}
+
 int main() {
-    string filename;
-    int n;
-    Atom ar[n];
-    cout <<"Type the path to the file:"<<endl;
-    cin >> filename;
+    std::string filename;
+    std::cout << "Type a path to the file:\n";
+    std::cin >> filename;
 
-    vector<float> center_x_Variables;
-    vector<float> center_y_Variables;
-    vector<float> center_z_Variables;
+    // Getting values and writing to components of the Atom structure
+    std::vector<Atom> atoms = getAtomsFromTSV(filename);
 
-    int col = 10; // coloumn number
-    vector<string> values = getColumnValuesFromTSV(filename, col);
+    // Accessing and displaying variables after a loop
+    // for (size_t i = 0; i < atoms.size(); ++i) {
+    //     std::cout << "Atom " << i + 1 << ": "
+    //               << atoms[i].chain << " "
+    //               << atoms[i].atom_index << " "
+    //               << atoms[i].res_index << " "
+    //               << atoms[i].center_x << " "
+    //               << atoms[i].center_y << " "
+    //               << atoms[i].center_z << std::endl;
+    // }
 
-    // Assigning values to variables and adding them to the vector
-    for (vector<string>::iterator i = values.begin(); i != values.end(); ++i) {
-        // Here we can actually perform any operations with each column value
-        string value = *i;
-        center_x_Variables.push_back(stof(value));
-    }
-
-    col = 11; 
-    values = getColumnValuesFromTSV(filename, col);
-
-    for (vector<string>::iterator i = values.begin(); i != values.end(); ++i) {
-        string value = *i;
-        center_y_Variables.push_back(stof(value));
-    }
-
-    col = 12; 
-    values = getColumnValuesFromTSV(filename, col);
-
-    for (vector<string>::iterator i = values.begin(); i != values.end(); ++i) {
-        string value = *i;
-        center_z_Variables.push_back(stof(value));
-    }
-
-    n = center_x_Variables.size();
-
-    //Ideally, it should assign the value of the vector element to a specific atom in the ar array, but this does not happen, an EXC_BAD_ACCESS error occurs. 
-    for (int i = 0; i < n; ++i) {
-        ar[i].atom_index = i;
-        ar[i].center_x = center_x_Variables[i];
-        ar[i].center_y = center_y_Variables[i];
-        ar[i].center_z = center_z_Variables[i];
-    }
-
-    // Testing on random examples (still need to create more interesting ones)
-    // cout <<"ar[10].center_x = "<< ar[10].center_x <<"\n"<<"ar[695].center_z = "<< ar[695].center_z <<"\n"<<"ar[808].center_y = "<< ar[808].center_y <<"\n"<<"ar[21].atom_index = "<< ar[21].atom_index<<endl;
+    std::cout <<"atoms[141].center_x = "<< atoms[141].center_x <<"\natoms[811].chain = "<< atoms[811].chain <<"\natoms[2].center_z = "<< atoms[2].center_z <<"\natoms[2].res_index = "<< atoms[2].res_index;
 
     return 0;
 }
