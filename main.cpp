@@ -1,46 +1,50 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <string>
 #include <vector>
 #include <cmath>
 #include <map>
 
+struct ResidueID{
+    std::string chainID;
+    int resSeq;
+
+    bool operator<(const ResidueID& other) const {
+        return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);
+    }
+};
 
 struct Atom {
-    char chain;
-    int resSeq;
+    std::string atom_name;
+    ResidueID residueID;
     float center_x;
     float center_y;
     float center_z;
 };
 
-float findDistance(Atom a1, Atom a2) {
+float calculateDistance(Atom a1, Atom a2) {
     return std::sqrt(std::pow(a2.center_x - a1.center_x, 2) + std::pow(a2.center_y - a1.center_y, 2) + std::pow(a2.center_z - a1.center_z, 2));
 }
 
 // Function for obtaining values from the specified column and writing them to the Atom structure
-std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
-    std::ifstream file(filename);
-    std::vector<Atom> atoms;
-
-    if (!file.is_open()) {
-        std::cerr << "Unable to open file: " << filename << std::endl;
-        return atoms;
-    }
-
+std::vector< Atom > getAtomsFromTSV(std::istream& input_stream, std::vector<std::string>& headers) {
+    std::vector< Atom > atoms;
     std::string line;
-    bool isFirstLine = true;
-
-    while (std::getline(file, line)) {
-        if (isFirstLine) {
-            // Skip the first line (header)
-            isFirstLine = false;
-            continue;
-        }
-
+    
+    // Read the first line to get the headers
+    if (std::getline(input_stream, line)) {
         std::stringstream lineStream(line);
         std::string cell;
-        std::vector<std::string> cells;
+        while (lineStream >> cell) {
+            headers.push_back(cell);
+        }
+    }
+
+    while (std::getline(input_stream, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        std::vector< std::string > cells;
 
         // Splitting a row into cells
         while (lineStream >> cell) {
@@ -49,8 +53,9 @@ std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
 
         if (cells.size() >= 15) {
             Atom atom;
-            atom.chain = cells[0][0];
-            atom.resSeq = std::stoi(cells[1]);
+            atom.atom_name = cells[2];  // Assuming the atom name is in the third column
+            atom.residueID.chainID = cells[0];
+            atom.residueID.resSeq = std::stoi(cells[1]);
             atom.center_x = std::stof(cells[11]);
             atom.center_y = std::stof(cells[12]);
             atom.center_z = std::stof(cells[13]);
@@ -62,50 +67,41 @@ std::vector<Atom> getAtomsFromTSV(const std::string& filename) {
     return atoms;
 }
 
-std::map<std::pair<char, int>, std::vector<Atom>> groupAtoms(const std::vector<Atom>& atoms) {
-    std::map<std::pair<char, int>, std::vector<Atom>> groupedAtoms;
+std::map< ResidueID, std::vector< Atom > > groupAtoms(const std::vector<Atom>& atoms) {
+    std::map< ResidueID, std::vector< Atom > > groupedAtoms;
     
     for (const Atom& atom : atoms) {
-        std::pair<char, int> key = std::make_pair(atom.chain, atom.resSeq);
-        groupedAtoms[key].push_back(atom);
+        groupedAtoms[atom.residueID].push_back(atom);
     }
     
     return groupedAtoms;
 }
 
 int main() {
-    std::string filename;
-    std::cout << "Type a path to the file:\n";
-    std::cin >> filename;
+    try {
+        std::string filename;
+        std::cout << "Enter the filename: ";
+        std::cin >> filename;
 
-    // Getting values and writing to components of the Atom structure
-    std::vector<Atom> atoms = getAtomsFromTSV(filename);
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            throw std::runtime_error("Unable to open file: " + filename);
+        }
 
-    // Accessing and displaying variables after a loop
-    // for (size_t i = 0; i < atoms.size(); ++i) {
-    //     std::cout << "Atom " << i + 1 << ": "
-    //               << atoms[i].chain << " "
-    //               << atoms[i].atom_index << " "
-    //               << atoms[i].res_index << " "
-    //               << atoms[i].center_x << " "
-    //               << atoms[i].center_y << " "
-    //               << atoms[i].center_z << std::endl;
-    // }
+        std::vector< std::string > headers;
+        std::vector< Atom > atoms = getAtomsFromTSV(file, headers);
+        file.close();
 
-    // std::map<std::pair<char, int>, std::vector<Atom>> groupedAtoms = groupAtoms(atoms);
+        std::map< ResidueID, std::vector< Atom > > groupedAtoms = groupAtoms(atoms);
 
-    // for (const auto& entry : groupedAtoms) {
-    //     std::pair<char, int> key = entry.first;
-    //     const std::vector<Atom>& group = entry.second;
-    //     std::cout << "Key: (" << key.first << ", " << key.second << ")\n";
-    //     for (const Atom& atom : group) {
-    //         std::cout << "  Atom: { chain: " << atom.chain << ", resSeq: " << atom.resSeq
-    //                   << ", center_x: " << atom.center_x << ", center_y: " << atom.center_y
-    //                   << ", center_z: " << atom.center_z << " }\n";
-    //     }
-    // }
+        std::cout << "atoms.at(0).center_x = " << atoms.at(0).center_x << "\nCalculateDistance(atoms.at(0), atoms.at(4)) = " << calculateDistance(atoms.at(0), atoms.at(4)) << std::endl;
 
-    std::cout << "the distance between atom 1 and atom 2 = " << findDistance(atoms[1], atoms[2]) <<"\n";
-    
+        // Additional code to use groupedAtoms...
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
+
     return 0;
 }
