@@ -53,7 +53,7 @@ std::vector< Atom > getAtomsFromTSV(std::istream& input_stream, std::vector<std:
 
         if (cells.size() >= 15) {
             Atom atom;
-            atom.atom_name = cells[2];  // Assuming the atom name is in the third column
+            atom.atom_name = cells[6];
             atom.residueID.chainID = cells[0];
             atom.residueID.resSeq = std::stoi(cells[1]);
             atom.center_x = std::stof(cells[11]);
@@ -93,10 +93,19 @@ int main() {
         file.close();
 
         std::map< ResidueID, std::vector< Atom > > groupedAtoms = groupAtoms(atoms);
+        for (const auto& entry : groupedAtoms) {
+        ResidueID key = entry.first;
+        const std::vector<Atom>& value = entry.second;
+        std::cout << "Key: (" << key.chainID << ", " << key.resSeq << ")\n";
+        for (const Atom& atom : value) {
+            std::cout << "  Atom: { name " << atom.atom_name << ", center_x: " << atom.center_x 
+            << ", center_y: " << atom.center_y << ", center_z: " << atom.center_z << " }\n";
+        }
+        }
 
-        std::cout << "atoms.at(0).center_x = " << atoms.at(0).center_x << "\nCalculateDistance(atoms.at(0), atoms.at(4)) = " << calculateDistance(atoms.at(0), atoms.at(4)) << std::endl;
 
-        // Additional code to use groupedAtoms...
+        // std::cout << "atoms.at(0).center_x = " << atoms.at(0).center_x << "\nCalculateDistance(atoms.at(0), atoms.at(4)) = " << calculateDistance(atoms.at(0), atoms.at(4)) << std::endl;
+
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
