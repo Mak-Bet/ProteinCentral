@@ -82,38 +82,96 @@ std::map< ResidueID, std::vector< Atom > > groupAtoms(const std::vector<Atom>& a
     return groupedAtoms;
 }
 
+// int main(int argc, char* argv[]) {
+//     try {
+//         // std::string filename;
+//         // std::cout << "Enter the filename: ";
+//         // std::cin >> filename;
+
+//         // std::ifstream file(filename);
+//         // if (!file.is_open()) {
+//         //     throw std::runtime_error("Unable to open file: " + filename);
+//         // }
+//         if (argc < 2) {
+//             std::cerr << "Usage " << argv[0] << ": too few arguments!\n";
+//             return 1;
+//         }
+
+//         std::string file_name = argv[1];
+
+//         // Open the file in read mode
+//         std::ifstream f(file_name);
+
+//         if (!f) {
+//             throw std::runtime_error("Unable to open file: " + file_name);
+//         }
+//         if (is_empty(f)) {
+//             throw std::runtime_error("The file " + file_name + "is empty!");
+//         }
+
+//         std::vector< std::string > headers;
+//         std::vector< Atom > atoms = getAtomsFromTSV(f, headers);
+//         f.close();
+
+//         std::map< ResidueID, std::vector< Atom > > groupedAtoms = groupAtoms(atoms);
+//         typedef std::map< ResidueID, std::vector< Atom > >::const_iterator GroupIterator;
+//         for (GroupIterator it1 = groupedAtoms.begin(); it1 != groupedAtoms.end(); ++it1) {
+//             for (GroupIterator it2 = std::next(it1); it2 != groupedAtoms.end(); ++it2) {
+//                 if (it1->first.chainID == it2->first.chainID) {
+//                     const std::vector<Atom>& atoms1 = it1->second;
+//                     const std::vector<Atom>& atoms2 = it2->second;
+
+//                     for (const Atom& atom1 : atoms1) {
+//                         for (const Atom& atom2 : atoms2) {
+//                             float distance = calculateDistance(atom1, atom2);
+//                             std::cout << "Distance between (" << it1->first.chainID << ", " << it1->first.resSeq 
+//                                       << ") and (" << it2->first.chainID << ", " << it2->first.resSeq 
+//                                       << ") atoms " << atom1.atom_name << " and " << atom2.atom_name 
+//                                       << " is: " << distance << "\n";
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+// } catch (const std::exception& e) {
+//     std::cerr << "Error: " << e.what() << std::endl;
+//     return 1;
+// }
+
+
 int main(int argc, char* argv[]) {
     try {
-        // std::string filename;
-        // std::cout << "Enter the filename: ";
-        // std::cin >> filename;
-
-        // std::ifstream file(filename);
-        // if (!file.is_open()) {
-        //     throw std::runtime_error("Unable to open file: " + filename);
-        // }
-        if (argc < 2) {
-            std::cerr << "Usage: " << argv[0] << " <filename>\n";
+        if (argc < 3) {
+            std::cerr << "Usage " << argv[0] << " : too few arguments!\n";
             return 1;
         }
 
-        std::string file_name = argv[1];
+        std::string infile = argv[1];
+        std::string outfile = argv[2];
 
-        // Open the file in read mode
-        std::ifstream f(file_name);
+        // Open the input file in read mode
+        std::ifstream input_file(infile);
 
-        if (!f) {
-            throw std::runtime_error("Unable to open file: " + file_name);
+        if (!input_file) {
+            throw std::runtime_error("Unable to open file: " + infile);
         }
-        if (is_empty(f)) {
-            throw std::runtime_error("The file " + file_name + "is empty!");
+        if (is_empty(input_file)) {
+            throw std::runtime_error("The file " + infile + " is empty!");
         }
 
-        std::vector< std::string > headers;
-        std::vector< Atom > atoms = getAtomsFromTSV(f, headers);
-        f.close();
+        std::vector<std::string> headers;
+        std::vector<Atom> atoms = getAtomsFromTSV(input_file, headers);
+        input_file.close();
 
-        std::map< ResidueID, std::vector< Atom > > groupedAtoms = groupAtoms(atoms);
+        std::map<ResidueID, std::vector<Atom> > groupedAtoms = groupAtoms(atoms);
+
+        // Open the output file in write mode
+        std::ofstream output_file(outfile);
+
+        if (!output_file) {
+            throw std::runtime_error("Unable to open file: " + outfile);
+        }
+
         typedef std::map< ResidueID, std::vector< Atom > >::const_iterator GroupIterator;
         for (GroupIterator it1 = groupedAtoms.begin(); it1 != groupedAtoms.end(); ++it1) {
             for (GroupIterator it2 = std::next(it1); it2 != groupedAtoms.end(); ++it2) {
@@ -124,19 +182,19 @@ int main(int argc, char* argv[]) {
                     for (const Atom& atom1 : atoms1) {
                         for (const Atom& atom2 : atoms2) {
                             float distance = calculateDistance(atom1, atom2);
-                            std::cout << "Distance between (" << it1->first.chainID << ", " << it1->first.resSeq 
-                                      << ") and (" << it2->first.chainID << ", " << it2->first.resSeq 
-                                      << ") atoms " << atom1.atom_name << " and " << atom2.atom_name 
-                                      << " is: " << distance << "\n";
+                            if (distance <= 5.0) {
+                                output_file << "Distance between (" << it1->first.chainID << ", " << it1->first.resSeq 
+                                            << ") and (" << it2->first.chainID << ", " << it2->first.resSeq 
+                                            << ") atoms " << atom1.atom_name << " and " << atom2.atom_name 
+                                            << " is: " << distance << "\n";
+                            }
                         }
                     }
                 }
             }
         }
 
-
-        // std::cout << "atoms.at(0).center_x = " << atoms.at(0).center_x << "\nCalculateDistance(atoms.at(0), atoms.at(4)) = " << calculateDistance(atoms.at(0), atoms.at(4)) << std::endl;
-
+        output_file.close();
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
