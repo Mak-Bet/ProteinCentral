@@ -1,8 +1,12 @@
+#!/bin/bash
 base_path="/Users/makarbetlei/Documents/Internship/voronota_1.29.4190/output"
+current_dir=$(pwd)
+cd "$current_dir" || exit
+# cd "$(dirname $0)"
 
 find "$base_path" -type f -name "atom_graph_nodes.tsv" | while read -r input_file; do
     foldername=$(basename "$(dirname "$input_file")")
-    output_file="../${foldername}_residue_links.txt"
+    output_file="../graph_generation_result/${foldername}_residue_links.txt"
     
-    ./residue_links_creation "$input_file" "$output_file"
+    ./my_graph_creation "$input_file" "$output_file"
 done

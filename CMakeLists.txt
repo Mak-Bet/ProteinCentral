@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0...3.13)
-project(residue_links_creation VERSION 0.1.0 LANGUAGES C CXX)
+project(my_graph_creation VERSION 0.1.0 LANGUAGES C CXX)
 
-add_executable(residue_links_creation main.cpp)
+add_executable(my_graph_creation my_graph_creation.cpp)
 
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_BUILD_TYPE Release)
