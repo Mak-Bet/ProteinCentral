@@ -35,58 +35,58 @@ namespace gsa{
 
     // Function for obtaining values from the specified column and writing them to the Atom structure
     std::vector<Atom> getAtomsFromTSV(std::istream& input_stream, std::vector<std::string>& headers) {
-    std::vector<Atom> atoms;
-    std::string line;
+        std::vector<Atom> atoms;
+        std::string line;
 
-    // Read the first line to get the headers
-    if (std::getline(input_stream, line)) {
-        std::stringstream lineStream(line);
-        std::string cell;
-        while (std::getline(lineStream, cell, '\t')) {
-            headers.push_back(cell);
+        // Read the first line to get the headers
+        if (std::getline(input_stream, line)) {
+            std::stringstream lineStream(line);
+            std::string cell;
+            while (std::getline(lineStream, cell, '\t')) {
+                headers.push_back(cell);
+            }
         }
+
+        std::unordered_map<std::string, int> header_index;
+        for (size_t i = 0; i < headers.size(); ++i) {
+            header_index[headers[i]] = i;
+        }
+
+        while (std::getline(input_stream, line)) {
+            std::stringstream lineStream(line);
+            std::string cell;
+            std::vector<std::string> cells;
+
+            // Splitting a row into cells
+            while (std::getline(lineStream, cell, '\t')) {
+                cells.push_back(cell);
+            }
+
+            if (cells.size() != headers.size()) {
+                throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
+            }
+
+            Atom atom;
+            try {
+                atom.atom_name = cells[header_index["ID_name"]];
+                atom.residueID.chainID = cells[header_index["ID_chainID"]];
+                atom.residueID.resSeq = std::stoi(cells[header_index["ID_resSeq"]]);
+                atom.center_x = std::stof(cells[header_index["center_x"]]);
+                atom.center_y = std::stof(cells[header_index["center_y"]]);
+                atom.center_z = std::stof(cells[header_index["center_z"]]);
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Invalid argument: " << e.what() << " in line: " << line << std::endl;
+                continue;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "Out of range: " << e.what() << " in line: " << line << std::endl;
+                continue;
+            }
+
+            atoms.push_back(atom);
+        }
+
+        return atoms;
     }
-
-    std::unordered_map<std::string, int> header_index;
-    for (size_t i = 0; i < headers.size(); ++i) {
-        header_index[headers[i]] = i;
-    }
-
-    while (std::getline(input_stream, line)) {
-        std::stringstream lineStream(line);
-        std::string cell;
-        std::vector<std::string> cells;
-
-        // Splitting a row into cells
-        while (std::getline(lineStream, cell, '\t')) {
-            cells.push_back(cell);
-        }
-
-        if (cells.size() != headers.size()) {
-            throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
-        }
-
-        Atom atom;
-        try {
-            atom.atom_name = cells[header_index["ID_name"]];
-            atom.residueID.chainID = cells[header_index["ID_chainID"]];
-            atom.residueID.resSeq = std::stoi(cells[header_index["ID_resSeq"]]);
-            atom.center_x = std::stof(cells[header_index["center_x"]]);
-            atom.center_y = std::stof(cells[header_index["center_y"]]);
-            atom.center_z = std::stof(cells[header_index["center_z"]]);
-        } catch (const std::invalid_argument& e) {
-            std::cerr << "Invalid argument: " << e.what() << " in line: " << line << std::endl;
-            continue;
-        } catch (const std::out_of_range& e) {
-            std::cerr << "Out of range: " << e.what() << " in line: " << line << std::endl;
-            continue;
-        }
-
-        atoms.push_back(atom);
-    }
-
-    return atoms;
-}
 
     std::map< ResidueID, std::vector< Atom > > groupAtoms(const std::vector<Atom>& atoms) {
         std::map< ResidueID, std::vector< Atom > > groupedAtoms;
@@ -106,8 +106,9 @@ namespace gsa{
             throw std::runtime_error("Unable to open file: " + output_file_name);
         }
 
+        // Write headers to the output file
+        output_file << "ID1_chainID\tID1_resSeq\tID1_name\tID2_chainID\tID2_resSeq\tID2_name\tdistance\n";
         typedef std::map< ResidueID, std::vector< Atom > >::const_iterator GroupIterator;
-
 
         for (GroupIterator it1 = groupedAtoms.begin(); it1 != groupedAtoms.end(); ++it1) {
             for (GroupIterator it2 = std::next(it1); it2 != groupedAtoms.end(); ++it2) {
@@ -123,16 +124,17 @@ namespace gsa{
                             float distance = calculateDistance(atom1, atom2);
                             if (distance <= 5.0 && distance < min_distance) {
                                 min_distance = distance;
-                                min_distance_info = "Distance between (" + it1->first.chainID + ", " + std::to_string(it1->first.resSeq) +
-                                                    ") and (" + it2->first.chainID + ", " + std::to_string(it2->first.resSeq) +
-                                                    ") atoms " + atom1.atom_name + " and " + atom2.atom_name +
-                                                    " is: " + std::to_string(distance) + "\n";
+                                std::stringstream ss;
+                                ss << it1->first.chainID << "\t" << it1->first.resSeq << "\t" << atom1.atom_name << "\t"
+                                   << it2->first.chainID << "\t" << it2->first.resSeq << "\t" << atom2.atom_name << "\t"
+                                   << distance;
+                                min_distance_info = ss.str();
                             }
                         }
                     }
 
                     if (!min_distance_info.empty()) {
-                        output_file << min_distance_info;
+                        output_file << min_distance_info << "\n";
                     }
                 }
             }
