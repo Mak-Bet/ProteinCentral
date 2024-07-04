@@ -2,7 +2,6 @@
 base_path="/Users/makarbetlei/Documents/Internship/voronota_1.29.4190/output"
 current_dir=$(pwd)
 cd "$current_dir" || exit
-# cd "$(dirname $0)"
 
 find "$base_path" -type f -name "atom_graph_nodes.tsv" | while read -r input_file; do
     foldername=$(basename "$(dirname "$input_file")")

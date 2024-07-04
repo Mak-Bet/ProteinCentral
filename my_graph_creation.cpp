@@ -34,44 +34,59 @@ namespace gsa{
     }
 
     // Function for obtaining values from the specified column and writing them to the Atom structure
-    std::vector< Atom > getAtomsFromTSV(std::istream& input_stream, std::vector<std::string>& headers) {
-        std::vector< Atom > atoms;
-        std::string line;
-    
-        // Read the first line to get the headers
-        if (std::getline(input_stream, line)) {
-            std::stringstream lineStream(line);
-            std::string cell;
-            while (lineStream >> cell) {
-                headers.push_back(cell);
-            }
+    std::vector<Atom> getAtomsFromTSV(std::istream& input_stream, std::vector<std::string>& headers) {
+    std::vector<Atom> atoms;
+    std::string line;
+
+    // Read the first line to get the headers
+    if (std::getline(input_stream, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        while (std::getline(lineStream, cell, '\t')) {
+            headers.push_back(cell);
         }
-
-        while (std::getline(input_stream, line)) {
-            std::stringstream lineStream(line);
-            std::string cell;
-            std::vector< std::string > cells;
-
-            // Splitting a row into cells
-            while (lineStream >> cell) {
-                cells.push_back(cell);
-            }
-
-            if (cells.size() >= 15) {
-                Atom atom;
-                atom.atom_name = cells[6];
-                atom.residueID.chainID = cells[0];
-                atom.residueID.resSeq = std::stoi(cells[1]);
-                atom.center_x = std::stof(cells[11]);
-                atom.center_y = std::stof(cells[12]);
-                atom.center_z = std::stof(cells[13]);
-
-                atoms.push_back(atom);
-            }
-        }
-
-        return atoms;
     }
+
+    std::unordered_map<std::string, int> header_index;
+    for (size_t i = 0; i < headers.size(); ++i) {
+        header_index[headers[i]] = i;
+    }
+
+    while (std::getline(input_stream, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        std::vector<std::string> cells;
+
+        // Splitting a row into cells
+        while (std::getline(lineStream, cell, '\t')) {
+            cells.push_back(cell);
+        }
+
+        if (cells.size() != headers.size()) {
+            throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
+        }
+
+        Atom atom;
+        try {
+            atom.atom_name = cells[header_index["ID_name"]];
+            atom.residueID.chainID = cells[header_index["ID_chainID"]];
+            atom.residueID.resSeq = std::stoi(cells[header_index["ID_resSeq"]]);
+            atom.center_x = std::stof(cells[header_index["center_x"]]);
+            atom.center_y = std::stof(cells[header_index["center_y"]]);
+            atom.center_z = std::stof(cells[header_index["center_z"]]);
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Invalid argument: " << e.what() << " in line: " << line << std::endl;
+            continue;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "Out of range: " << e.what() << " in line: " << line << std::endl;
+            continue;
+        }
+
+        atoms.push_back(atom);
+    }
+
+    return atoms;
+}
 
     std::map< ResidueID, std::vector< Atom > > groupAtoms(const std::vector<Atom>& atoms) {
         std::map< ResidueID, std::vector< Atom > > groupedAtoms;
