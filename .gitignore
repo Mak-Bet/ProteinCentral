@@ -1,4 +1,4 @@
 .vscode
 build
 voronota_results
-graph_generation_results
+#graph_generation_results
