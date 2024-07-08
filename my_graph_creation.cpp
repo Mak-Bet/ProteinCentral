@@ -19,9 +19,9 @@ namespace gsa{
     struct Atom {
         std::string atom_name;
         ResidueID residueID;
-        float center_x;
-        float center_y;
-        float center_z;
+        double center_x;
+        double center_y;
+        double center_z;
     };
 
     bool is_empty(std::ifstream& pFile)
@@ -29,58 +29,56 @@ namespace gsa{
         return pFile.peek() == std::ifstream::traits_type::eof();
     }
 
-    float calculateDistance(Atom a1, Atom a2) {
+    double calculateDistance(Atom a1, Atom a2) {
         return std::sqrt(std::pow(a2.center_x - a1.center_x, 2) + std::pow(a2.center_y - a1.center_y, 2) + std::pow(a2.center_z - a1.center_z, 2));
     }
 
     // Function for obtaining values from the specified column and writing them to the Atom structure
-    std::vector<Atom> getAtomsFromTSV(std::istream& input_stream, std::vector<std::string>& headers) {
+    std::vector<Atom> getAtomsFromTSV(std::istream& input_stream) {
+        std::vector<std::string> headers;
         std::vector<Atom> atoms;
         std::string line;
 
         // Read the first line to get the headers
         if (std::getline(input_stream, line)) {
             std::stringstream lineStream(line);
-            std::string cell;
-            while (std::getline(lineStream, cell, '\t')) {
-                headers.push_back(cell);
+            std::string token;
+            while (std::getline(lineStream, token, '\t')) {
+                headers.push_back(token);
             }
         }
 
-        std::unordered_map<std::string, int> header_index;
-        for (size_t i = 0; i < headers.size(); ++i) {
+        std::map<std::string, std::size_t> header_index;
+        for (std::size_t i = 0; i < headers.size(); ++i) {
+            if(header_index.count(headers[i]) > 0){
+                throw std::runtime_error("Coloumn name repetition is not permitted in this program!");
+            }
             header_index[headers[i]] = i;
         }
 
         while (std::getline(input_stream, line)) {
+            std::vector<std::string> tokens;
+            {
             std::stringstream lineStream(line);
-            std::string cell;
-            std::vector<std::string> cells;
+            std::string token;
 
-            // Splitting a row into cells
-            while (std::getline(lineStream, cell, '\t')) {
-                cells.push_back(cell);
+            // Splitting a row into tokens
+            while (std::getline(lineStream, token, '\t')) {
+                tokens.push_back(token);
+            }
             }
 
-            if (cells.size() != headers.size()) {
+            if (tokens.size() != headers.size()) {
                 throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
             }
 
             Atom atom;
-            try {
-                atom.atom_name = cells[header_index["ID_name"]];
-                atom.residueID.chainID = cells[header_index["ID_chainID"]];
-                atom.residueID.resSeq = std::stoi(cells[header_index["ID_resSeq"]]);
-                atom.center_x = std::stof(cells[header_index["center_x"]]);
-                atom.center_y = std::stof(cells[header_index["center_y"]]);
-                atom.center_z = std::stof(cells[header_index["center_z"]]);
-            } catch (const std::invalid_argument& e) {
-                std::cerr << "Invalid argument: " << e.what() << " in line: " << line << std::endl;
-                continue;
-            } catch (const std::out_of_range& e) {
-                std::cerr << "Out of range: " << e.what() << " in line: " << line << std::endl;
-                continue;
-            }
+            atom.atom_name = tokens.at(header_index.at("ID_name"));
+            atom.residueID.chainID = tokens.at(header_index.at("ID_chainID"));
+            atom.residueID.resSeq = std::stoi(tokens.at(header_index.at("ID_resSeq")));
+            atom.center_x = std::stod(tokens.at(header_index.at("center_x")));
+            atom.center_y = std::stod(tokens.at(header_index.at("center_y")));
+            atom.center_z = std::stod(tokens.at(header_index.at("center_z")));
 
             atoms.push_back(atom);
         }
@@ -98,49 +96,39 @@ namespace gsa{
         return groupedAtoms;
     }
 
-    void findAndSaveShortestDistances(const std::map<ResidueID, std::vector<Atom> >& groupedAtoms, const std::string& output_file_name) {
-        // Open the output file in write mode
-        std::ofstream output_file(output_file_name);
-
-        if (!output_file) {
-            throw std::runtime_error("Unable to open file: " + output_file_name);
+    void findAndSaveShortestDistances(const std::map<ResidueID, std::vector<Atom> >& groupedAtoms, std::ostream& output_file) {
+        if (groupedAtoms.empty()) {
+            throw std::runtime_error("The file is empty!");
         }
 
         // Write headers to the output file
-        output_file << "ID1_chainID\tID1_resSeq\tID1_name\tID2_chainID\tID2_resSeq\tID2_name\tdistance\n";
+        output_file << "ID1_chainID\tID1_resSeq\tID2_chainID\tID2_resSeq\tdistance\n";
         typedef std::map< ResidueID, std::vector< Atom > >::const_iterator GroupIterator;
 
         for (GroupIterator it1 = groupedAtoms.begin(); it1 != groupedAtoms.end(); ++it1) {
             for (GroupIterator it2 = std::next(it1); it2 != groupedAtoms.end(); ++it2) {
-                if (it1->first.chainID == it2->first.chainID) {
+                {
+                    {
                     const std::vector<Atom>& atoms1 = it1->second;
                     const std::vector<Atom>& atoms2 = it2->second;
 
-                    float min_distance = std::numeric_limits<float>::max();
-                    std::string min_distance_info;
+                    double min_distance = std::numeric_limits<double>::max();
 
                     for (const Atom& atom1 : atoms1) {
                         for (const Atom& atom2 : atoms2) {
-                            float distance = calculateDistance(atom1, atom2);
-                            if (distance <= 5.0 && distance < min_distance) {
-                                min_distance = distance;
-                                std::stringstream ss;
-                                ss << it1->first.chainID << "\t" << it1->first.resSeq << "\t" << atom1.atom_name << "\t"
-                                   << it2->first.chainID << "\t" << it2->first.resSeq << "\t" << atom2.atom_name << "\t"
-                                   << distance;
-                                min_distance_info = ss.str();
-                            }
+                            double distance = calculateDistance(atom1, atom2);
+                            min_distance=std::min(min_distance, distance);
                         }
                     }
-
-                    if (!min_distance_info.empty()) {
-                        output_file << min_distance_info << "\n";
+                        if (min_distance <= 5.0) {
+                            output_file << it1->first.chainID << "\t" << it1->first.resSeq << "\t"
+                                << it2->first.chainID << "\t" << it2->first.resSeq << "\t"
+                                << min_distance << "\n";
+                        }
                     }
                 }
             }
         }
-
-        output_file.close();
     }
 }
 
@@ -165,16 +153,22 @@ int main(int argc, char* argv[]) {
         }
 
         std::vector<std::string> headers;
-        std::vector<gsa::Atom> atoms = gsa::getAtomsFromTSV(input_file, headers);
-        input_file.close();
+        std::vector<gsa::Atom> atoms = gsa::getAtomsFromTSV(input_file);
 
         std::map<gsa::ResidueID, std::vector<gsa::Atom> > groupedAtoms = gsa::groupAtoms(atoms);
-
-        findAndSaveShortestDistances(groupedAtoms, outfile);
+        {
+            std::ofstream output_file(outfile);
+            if(!output_file){
+                throw std::runtime_error("Unable to open file: " + outfile);
+            }
+            findAndSaveShortestDistances(groupedAtoms, output_file);
+        }
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
+    } catch (...){
+        std::cerr << "Unrecognizable error" << std::endl;
     }
 
     return 0;

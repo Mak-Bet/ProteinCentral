@@ -1,5 +1,7 @@
 .vscode
 build
 voronota_results
-graph_generation_results
 .DS_Store
+igraph_tests
+igraph-0.10.13
+graph_generation_results
