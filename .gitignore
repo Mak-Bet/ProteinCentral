@@ -2,4 +2,5 @@
 build
 voronota_results
 .DS_Store
-graph_generation_results
+graph_creation_results
+centrality_calculation_results
