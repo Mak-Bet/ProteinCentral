@@ -1,5 +1,3 @@
-//think of a way to name graph vertices by a pair (string, int) and not only by number,    
-//think about writing information to a file
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -22,11 +20,6 @@ bool is_empty(std::ifstream& pFile)
     {
         return pFile.peek() == std::ifstream::traits_type::eof();
     }
-
-// Function for generating a unique vertex identifier based on chain and number
-std::string generateVertexID(const ResidueID& residueID) {
-    return residueID.chainID + "_" + std::to_string(residueID.resSeq);
-}
 
 // Function for parsing TSV headers and rows
 void parseTSVHeadersAndRows(std::istream& input_stream, std::vector<std::string>& headers, std::vector<std::vector<std::string> >& rows) {
@@ -54,7 +47,7 @@ void parseTSVHeadersAndRows(std::istream& input_stream, std::vector<std::string>
 }
 
 // Function for reading vertices data from TSV file
-std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vector<std::string>& vertex_names) {
+std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vector<ResidueID>& vertices) {
     std::vector<std::string> headers;
     std::vector<std::vector<std::string> > rows;
     parseTSVHeadersAndRows(input_stream, headers, rows);
@@ -75,10 +68,12 @@ std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vec
             throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
         }
 
-        ResidueID id = {tokens.at(header_index.at("ID_chainID")), std::stoi(tokens.at(header_index.at("ID_resSeq")))};
+        ResidueID id;
+        id.chainID = tokens.at(header_index.at("ID_chainID"));
+        id.resSeq = std::stoi(tokens.at(header_index.at("ID_resSeq")));
         if (vertex_map.find(id) == vertex_map.end()) {
             vertex_map[id] = vertex_id++;
-            vertex_names.push_back(generateVertexID(id));
+            vertices.push_back(id);
         }
     }
 
@@ -92,6 +87,7 @@ std::vector<std::pair<ResidueID, ResidueID> > getEdgesFromTSV(std::istream& inpu
     parseTSVHeadersAndRows(input_stream, headers, rows);
 
     std::vector<std::pair<ResidueID, ResidueID> > edges;
+
     std::map<std::string, std::size_t> header_index;
     for (std::size_t i = 0; i < headers.size(); ++i) {
         if (header_index.count(headers[i]) > 0) {
@@ -105,8 +101,11 @@ std::vector<std::pair<ResidueID, ResidueID> > getEdgesFromTSV(std::istream& inpu
             throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
         }
 
-        ResidueID id1 = {tokens.at(header_index.at("ID1_chainID")), std::stoi(tokens.at(header_index.at("ID1_resSeq")))};
-        ResidueID id2 = {tokens.at(header_index.at("ID2_chainID")), std::stoi(tokens.at(header_index.at("ID2_resSeq")))};
+        ResidueID id1, id2;
+        id1.chainID = tokens.at(header_index.at("ID1_chainID"));
+        id1.resSeq = std::stoi(tokens.at(header_index.at("ID1_resSeq")));
+        id2.chainID = tokens.at(header_index.at("ID2_chainID"));
+        id2.resSeq = std::stoi(tokens.at(header_index.at("ID2_resSeq")));
 
         edges.push_back(std::make_pair(id1, id2));
     }
@@ -133,9 +132,8 @@ int main(int argc, char* argv[]) {
         }
 
         // Creating a mapping for unique vertices
-        std::vector<std::string> vertex_names;
-        std::map<ResidueID, int> vertex_map = getVerticesFromTSV(vertices_input, vertex_names);
-        vertices_input.close();
+        std::vector<ResidueID> vertices;
+        std::map<ResidueID, int> vertex_map = getVerticesFromTSV(vertices_input, vertices);
 
         std::ifstream edges_input(edges_file);
         if (!edges_input) {
@@ -182,9 +180,10 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Unable to open output file: " + output_file);
         }
 
-        output << "Vertex\tDegree\tCloseness\tBetweenness\tPageRank\tEigenvector\n";
+        output << "ID_chainID\tID_resSeq\tDegree\tCloseness\tBetweenness\tPageRank\tEigenvector\n";
         for (int i = 0; i < igraph_vector_int_size(&degree); i++) {
-            output << vertex_names[i] << "\t"
+            output << vertices[i].chainID << "\t"
+                   << vertices[i].resSeq << "\t"
                    << VECTOR(degree)[i] << "\t"
                    << VECTOR(closeness)[i] << "\t"
                    << VECTOR(betweenness)[i] << "\t"

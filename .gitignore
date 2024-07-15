@@ -1,6 +1,5 @@
 .vscode
 build
-voronota_results
 .DS_Store
-graph_creation_results
-centrality_calculation_results
+results
+test
