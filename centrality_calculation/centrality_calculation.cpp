@@ -6,23 +6,27 @@
 #include <map>
 #include <igraph.h>
 
-struct ResidueID{
-        std::string chainID;
-        int resSeq;
+struct TSVData {
+    std::vector<std::string> headers;
+    std::vector<std::vector<std::string> > rows;
+};
 
-        bool operator<(const ResidueID& other) const {
-            return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);
-        }
-    };
+struct ResidueID {
+    std::string chainID;
+    int resSeq;
 
-//Checking whether the file is empty
-bool is_empty(std::ifstream& pFile)
-    {
-        return pFile.peek() == std::ifstream::traits_type::eof();
+    bool operator<(const ResidueID& other) const {
+        return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);
     }
+};
 
-// Function for parsing TSV headers and rows
-void parseTSVHeadersAndRows(std::istream& input_stream, std::vector<std::string>& headers, std::vector<std::vector<std::string> >& rows) {
+// Checking whether the file is empty
+bool is_empty(std::ifstream& pFile) {
+    return pFile.peek() == std::ifstream::traits_type::eof();
+}
+
+// Function for parsing TSV headers and rows using the new structure
+void parseTSVHeadersAndRows(std::istream& input_stream, TSVData& tsv_data) {
     std::string line;
 
     // Read the first line to get the headers
@@ -30,7 +34,7 @@ void parseTSVHeadersAndRows(std::istream& input_stream, std::vector<std::string>
         std::stringstream lineStream(line);
         std::string token;
         while (std::getline(lineStream, token, '\t')) {
-            headers.push_back(token);
+            tsv_data.headers.push_back(token);
         }
     }
 
@@ -42,35 +46,30 @@ void parseTSVHeadersAndRows(std::istream& input_stream, std::vector<std::string>
         while (std::getline(lineStream, token, '\t')) {
             tokens.push_back(token);
         }
-        rows.push_back(tokens);
+        tsv_data.rows.push_back(tokens);
     }
 }
 
 // Function for reading vertices data from TSV file
 std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vector<ResidueID>& vertices) {
-    std::vector<std::string> headers;
-    std::vector<std::vector<std::string> > rows;
-    parseTSVHeadersAndRows(input_stream, headers, rows);
+    TSVData tsv_data;
+    parseTSVHeadersAndRows(input_stream, tsv_data);
 
     std::map<std::string, std::size_t> header_index;
-    for (std::size_t i = 0; i < headers.size(); ++i) {
-        if (header_index.count(headers[i]) > 0) {
+    for (std::size_t i = 0; i < tsv_data.headers.size(); ++i) {
+        if (header_index.count(tsv_data.headers[i]) > 0) {
             throw std::runtime_error("Column name repetition is not permitted in this program!");
         }
-        header_index[headers[i]] = i;
+        header_index[tsv_data.headers[i]] = i;
     }
 
     std::map<ResidueID, int> vertex_map;
     int vertex_id = 0;
 
-    for (const std::vector<std::string>& tokens : rows) {
-        if (tokens.size() != headers.size()) {
-            throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
-        }
-
+    for (const std::vector<std::string>& row : tsv_data.rows) {
         ResidueID id;
-        id.chainID = tokens.at(header_index.at("ID_chainID"));
-        id.resSeq = std::stoi(tokens.at(header_index.at("ID_resSeq")));
+        id.chainID = row.at(header_index.at("ID_chainID"));
+        id.resSeq = std::stoi(row.at(header_index.at("ID_resSeq")));
         if (vertex_map.find(id) == vertex_map.end()) {
             vertex_map[id] = vertex_id++;
             vertices.push_back(id);
@@ -82,25 +81,23 @@ std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vec
 
 // Function for reading data from TSV file
 std::vector<std::pair<ResidueID, ResidueID> > getEdgesFromTSV(std::istream& input_stream) {
-    std::vector<std::string> headers;
-    std::vector<std::vector<std::string> > rows;
-    parseTSVHeadersAndRows(input_stream, headers, rows);
+    TSVData tsv_data;
+    parseTSVHeadersAndRows(input_stream, tsv_data);
 
     std::vector<std::pair<ResidueID, ResidueID> > edges;
 
     std::map<std::string, std::size_t> header_index;
-    for (std::size_t i = 0; i < headers.size(); ++i) {
-        if (header_index.count(headers[i]) > 0) {
+    for (std::size_t i = 0; i < tsv_data.headers.size(); ++i) {
+        if (header_index.count(tsv_data.headers[i]) > 0) {
             throw std::runtime_error("Column name repetition is not permitted in this program!");
         }
-        header_index[headers[i]] = i;
+        header_index[tsv_data.headers[i]] = i;
     }
 
-    for (const std::vector<std::string> tokens : rows) {
-        if (tokens.size() != headers.size()) {
+    for (const std::vector<std::string> tokens : tsv_data.rows) {
+        if (tokens.size() != tsv_data.headers.size()) {
             throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
         }
-
         ResidueID id1, id2;
         id1.chainID = tokens.at(header_index.at("ID1_chainID"));
         id1.resSeq = std::stoi(tokens.at(header_index.at("ID1_resSeq")));
