@@ -1,6 +1,6 @@
 #!/bin/bash
 
-voronota_path="/tools/generate_list_graph/voronota_1.29.4198"
+voronota_path="/tools/voronota_1.29.4198"
 generate_list_graph_app_path="/tools/generate_list_graph/build"
 calculate_centrality_app_path="/tools/calculate_centrality/build"
 

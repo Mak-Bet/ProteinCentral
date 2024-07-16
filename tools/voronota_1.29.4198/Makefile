@@ -57,10 +57,10 @@ RM = /opt/homebrew/Cellar/cmake/3.29.6/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/makarbetlei/Documents/Internship/voronota_1.29.4198
+CMAKE_SOURCE_DIR = /Users/makarbetlei/Documents/ProteinCentral/tools/voronota_1.29.4198
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/makarbetlei/Documents/Internship/voronota_1.29.4198
+CMAKE_BINARY_DIR = /Users/makarbetlei/Documents/ProteinCentral/tools/voronota_1.29.4198
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -132,9 +132,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/makarbetlei/Documents/Internship/voronota_1.29.4198/CMakeFiles /Users/makarbetlei/Documents/Internship/voronota_1.29.4198//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/makarbetlei/Documents/ProteinCentral/tools/voronota_1.29.4198/CMakeFiles /Users/makarbetlei/Documents/ProteinCentral/tools/voronota_1.29.4198//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/makarbetlei/Documents/Internship/voronota_1.29.4198/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/makarbetlei/Documents/ProteinCentral/tools/voronota_1.29.4198/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
