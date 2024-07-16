@@ -5,50 +5,8 @@
 #include <vector>
 #include <map>
 #include <igraph.h>
-
-struct TSVData {
-    std::vector<std::string> headers;
-    std::vector<std::vector<std::string> > rows;
-};
-
-struct ResidueID {
-    std::string chainID;
-    int resSeq;
-
-    bool operator<(const ResidueID& other) const {
-        return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);
-    }
-};
-
-// Checking whether the file is empty
-bool is_empty(std::ifstream& pFile) {
-    return pFile.peek() == std::ifstream::traits_type::eof();
-}
-
-// Function for parsing TSV headers and rows using the new structure
-void parseTSVHeadersAndRows(std::istream& input_stream, TSVData& tsv_data) {
-    std::string line;
-
-    // Read the first line to get the headers
-    if (std::getline(input_stream, line)) {
-        std::stringstream lineStream(line);
-        std::string token;
-        while (std::getline(lineStream, token, '\t')) {
-            tsv_data.headers.push_back(token);
-        }
-    }
-
-    // Read the rest of the lines to get the rows
-    while (std::getline(input_stream, line)) {
-        std::vector<std::string> tokens;
-        std::stringstream lineStream(line);
-        std::string token;
-        while (std::getline(lineStream, token, '\t')) {
-            tokens.push_back(token);
-        }
-        tsv_data.rows.push_back(tokens);
-    }
-}
+#include <tsv_parcing.h>
+#include <residue.h>
 
 // Function for reading vertices data from TSV file
 std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vector<ResidueID>& vertices) {
