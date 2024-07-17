@@ -135,7 +135,7 @@ To facilitate the use of the project, several scripts are already created in the
 
     bash scripts/run_project.bash *PDB ID* *output_folder*
 
-Here, **PDB ID** is a PDB ID of an element(no more than 4 symbols), and **output_folder** is a path to a folder where the results of a script will be stored
+    Here, **PDB ID** is a PDB ID of an element(no more than 4 symbols), and **output_folder** is a path to a folder where the results of a script will be stored
 - **multiple_generate_list_graph** cycles through all files named *atom_graph_nodes.tsv* in the specified directory and runs the **generate_list_graph** function for each of them and saves the results in the output folder, so the program results are created for all PDBs at once. It doesn't require any arguments so to run it, simply use the following command:
 
     bash scripts/multiple_generate_list_graph.bash
@@ -143,6 +143,6 @@ Here, **PDB ID** is a PDB ID of an element(no more than 4 symbols), and **output
 - **multiple_calculate_centrality** cycles through all files named *residue_graph_nodes.tsv* in the specified directory as well as through all files *dist_based_residue_graph_links.tsv* (created using the **generate_list_graph** program), runs the **calculate_centrality** function for each of them and saves the results in the output folder, thus the results of the program are created for all PDBs at once. It doesn't require any arguments so to run it, simply use the following command:
 
     bash scripts/multiple_generate_list_graph.bash
-    
+
 
 *to be continued...*
