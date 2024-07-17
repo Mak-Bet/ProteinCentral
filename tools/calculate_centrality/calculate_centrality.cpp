@@ -8,6 +8,35 @@
 #include <tsv_parcing.h>
 #include <residue.h>
 
+std::string findPrefix(std::string file_name) {
+    std::string result;
+    // Finding the position of the last '/' symbol
+    size_t lastSlashPos = file_name.find_last_of('/');
+
+    // Finding the position of the first '_' symbol
+    size_t firstUnderscorePos = file_name.find('_');
+
+    size_t dotPos = file_name.find_last_of('.');
+
+    if (lastSlashPos == std::string::npos && firstUnderscorePos == std::string::npos) {
+        // If neither '/' nor '_' are found, return the whole string
+        result = file_name.substr(0, dotPos) + "_";
+    } else if (lastSlashPos == std::string::npos) {
+        // If '/' not found, return the string untill the first '_'
+        result = file_name.substr(0, firstUnderscorePos + 1);
+    } else if (firstUnderscorePos == std::string::npos) {
+        // If '_' not found, return the string after the last '/'
+        result = file_name.substr(lastSlashPos + 1, dotPos - lastSlashPos - 1) + "_";
+    } else if (lastSlashPos < firstUnderscorePos) {
+        // If both symbols are found and '/' goes before '_', return the string berween them
+        result = file_name.substr(lastSlashPos + 1, firstUnderscorePos - lastSlashPos);
+    } else {
+        // If '_' goes before '/', return an empty string (unexpected case)
+        result = "";
+    }
+    return result;
+}
+
 // Function for reading vertices data from TSV file
 std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vector<ResidueID>& vertices) {
     TSVData tsv_data;
@@ -38,11 +67,11 @@ std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vec
 }
 
 // Function for reading data from TSV file
-std::vector<std::pair<ResidueID, ResidueID> > getEdgesFromTSV(std::istream& input_stream) {
+std::vector<interaction> getInteractionsFromTSV(std::istream& input_stream) {
     TSVData tsv_data;
     parseTSVHeadersAndRows(input_stream, tsv_data);
 
-    std::vector<std::pair<ResidueID, ResidueID> > edges;
+    std::vector<interaction> edges;
 
     std::map<std::string, std::size_t> header_index;
     for (std::size_t i = 0; i < tsv_data.headers.size(); ++i) {
@@ -56,13 +85,23 @@ std::vector<std::pair<ResidueID, ResidueID> > getEdgesFromTSV(std::istream& inpu
         if (tokens.size() != tsv_data.headers.size()) {
             throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
         }
+
+        interaction inter;
         ResidueID id1, id2;
         id1.chainID = tokens.at(header_index.at("ID1_chainID"));
         id1.resSeq = std::stoi(tokens.at(header_index.at("ID1_resSeq")));
         id2.chainID = tokens.at(header_index.at("ID2_chainID"));
         id2.resSeq = std::stoi(tokens.at(header_index.at("ID2_resSeq")));
 
-        edges.push_back(std::make_pair(id1, id2));
+        inter.edge = std::make_pair(id1, id2);
+
+        inter.distance = std::stod(tokens.at(header_index.at("distance")));
+
+        if (header_index.find("area") != header_index.end()) {
+            inter.area = std::stod(tokens.at(header_index.at("area")));
+        }
+
+        edges.push_back(inter);
     }
 
     return edges;
@@ -79,6 +118,7 @@ int main(int argc, char* argv[]) {
         std::string edges_file = argv[2];
         std::string output_file = argv[3];
         std::ifstream vertices_input(vertices_file);
+        std::string prefix = findPrefix(output_file);
         if (!vertices_input) {
             throw std::runtime_error("Unable to open file: " + vertices_file);
         }
@@ -98,7 +138,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("The file " + edges_file + " is empty!");
         }
 
-        std::vector<std::pair<ResidueID, ResidueID> > edges = getEdgesFromTSV(edges_input);
+        std::vector<interaction> edges = getInteractionsFromTSV(edges_input);
         edges_input.close();
 
         // Creating a graph
@@ -107,8 +147,8 @@ int main(int argc, char* argv[]) {
         igraph_vector_int_init(&edge_vector, edges.size() * 2);
 
         for (size_t i = 0; i < edges.size(); ++i) {
-            VECTOR(edge_vector)[2 * i] = static_cast<igraph_integer_t>(vertex_map[edges[i].first]);
-            VECTOR(edge_vector)[2 * i + 1] = static_cast<igraph_integer_t>(vertex_map[edges[i].second]);
+            VECTOR(edge_vector)[2 * i] = static_cast<igraph_integer_t>(vertex_map[edges[i].edge.first]);
+            VECTOR(edge_vector)[2 * i + 1] = static_cast<igraph_integer_t>(vertex_map[edges[i].edge.second]);
         }
 
         igraph_create(&graph, &edge_vector, 0, IGRAPH_UNDIRECTED);
@@ -135,7 +175,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Unable to open output file: " + output_file);
         }
 
-        output << "ID_chainID\tID_resSeq\tDegree\tCloseness\tBetweenness\tPageRank\tEigenvector\n";
+        output << "ID_chainID\tID_resSeq\t" << prefix << "Degree\t" << prefix << "Closeness\t" << prefix << "Betweenness\t" << prefix << "PageRank\t" << prefix << "Eigenvector\n";
         for (int i = 0; i < igraph_vector_int_size(&degree); i++) {
             output << vertices[i].chainID << "\t"
                    << vertices[i].resSeq << "\t"

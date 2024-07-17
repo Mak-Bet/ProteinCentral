@@ -1,4 +1,4 @@
-ID_chainID	ID_resSeq	Degree	Closeness	Betweenness	PageRank	Eigenvector
+ID_chainID	ID_resSeq	tes_Degree	tes_Closeness	tes_Betweenness	tes_PageRank	tes_Eigenvector
 A	1	5	0.000690608	15.6576	0.00213793	0.00625294
 A	2	5	0.000634115	4.87906	0.00215885	0.00570069
 A	3	6	0.000642261	7.95978	0.0024337	0.00738835

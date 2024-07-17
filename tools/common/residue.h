@@ -26,6 +26,12 @@ struct Atom {
     double center_z;
 };
 
+struct interaction{
+    std::pair<ResidueID, ResidueID> edge;
+    double distance;
+    double area;
+};
+
 double calculateDistance(Atom a1, Atom a2) {
     return std::sqrt(std::pow(a2.center_x - a1.center_x, 2) + std::pow(a2.center_y - a1.center_y, 2) + std::pow(a2.center_z - a1.center_z, 2));
 }

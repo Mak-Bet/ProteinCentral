@@ -1,4 +1,4 @@
-ID_chainID	ID_resSeq	Degree	Closeness	Betweenness	PageRank	Eigenvector
+ID_chainID	ID_resSeq	dist_Degree	dist_Closeness	dist_Betweenness	dist_PageRank	dist_Eigenvector
 A	1	6	0.00019755	2.23314	0.000904003	0.0119048
 A	2	8	0.000208117	638.523	0.00112551	0.0165082
 A	3	15	0.000228206	1687.6	0.00181417	0.0444342
