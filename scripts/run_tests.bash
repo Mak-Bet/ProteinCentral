@@ -1,5 +1,15 @@
 #!/bin/bash
 
-bash scripts/run_project.bash 1AO7 tests
-bash scripts/run_project.bash 2REX tests
-bash scripts/run_project.bash 4MNQ tests
+cd "$(dirname $0)/.."
+
+rm -rf ./tests
+
+{
+cat << 'EOF'
+1AO7
+2REX
+4MNQ
+EOF
+} | xargs -L 1 -P 8 ./scripts/run_project.bash tests
+
+git status ./tests
