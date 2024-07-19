@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
+#include <stdexcept>
 
 struct TSVData {
     std::vector<std::string> headers;
@@ -24,7 +26,11 @@ void parseTSVHeadersAndRows(std::istream& input_stream, TSVData& tsv_data) {
     if (std::getline(input_stream, line)) {
         std::stringstream lineStream(line);
         std::string token;
+        std::set<std::string> header_set;
         while (std::getline(lineStream, token, '\t')) {
+            if (!header_set.insert(token).second) {
+                throw std::runtime_error("Column name repetition is not permitted in this program!");
+            }
             tsv_data.headers.push_back(token);
         }
     }
@@ -36,6 +42,9 @@ void parseTSVHeadersAndRows(std::istream& input_stream, TSVData& tsv_data) {
         std::string token;
         while (std::getline(lineStream, token, '\t')) {
             tokens.push_back(token);
+        }
+        if (tokens.size() != tsv_data.headers.size()) {
+            throw std::runtime_error("Mismatch between number of headers and number of columns in a line");
         }
         tsv_data.rows.push_back(tokens);
     }

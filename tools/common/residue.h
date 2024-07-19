@@ -26,8 +26,9 @@ struct Atom {
     double center_z;
 };
 
-struct interaction{
-    std::pair<ResidueID, ResidueID> edge;
+struct Interaction{
+    ResidueID id1;
+    ResidueID id2;
     double distance;
     double area;
 };

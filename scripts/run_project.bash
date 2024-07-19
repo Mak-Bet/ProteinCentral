@@ -24,15 +24,16 @@ tests_folder_path=$(realpath ${DIRNAME}/${PDBID})
 
 ${generate_list_graph_app_path}/generate_list_graph \
   "${tests_folder_path}/atom_graph_nodes.tsv" \
-  "${tests_folder_path}/dist_based_residue_graph_links.tsv"
+  "${tests_folder_path}/dist_based_residue_graph_links.tsv" 
 
 ${calculate_centrality_app_path}/calculate_centrality \
   "${tests_folder_path}/residue_graph_nodes.tsv" \
   "${tests_folder_path}/dist_based_residue_graph_links.tsv" \
-  "${tests_folder_path}/dist_based_centrality_measures.tsv"
+  "${tests_folder_path}/dist_based_centrality_measures.tsv" \
+  dist_
 
 ${calculate_centrality_app_path}/calculate_centrality \
   "${tests_folder_path}/residue_graph_nodes.tsv" \
   "${tests_folder_path}/residue_graph_links.tsv" \
-  "${tests_folder_path}/tes_based_centrality_measures.tsv"
-  
+  "${tests_folder_path}/tes_based_centrality_measures.tsv" \
+  tes_
