@@ -12,6 +12,7 @@
 struct ResidueID {
     std::string chainID;
     int resSeq;
+    bool interface_status;
 
     bool operator<(const ResidueID& other) const {
         return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);

@@ -25,6 +25,7 @@ std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vec
         ResidueID id;
         id.chainID = row.at(header_index.at("ID_chainID"));
         id.resSeq = std::stoi(row.at(header_index.at("ID_resSeq")));
+        id.interface_status = 0;
         if (vertex_map.find(id) == vertex_map.end()) {
             vertex_map[id] = vertex_id++;
             vertices.push_back(id);
@@ -65,17 +66,36 @@ std::vector<Interaction> getInteractionsFromTSV(std::istream& input_stream) {
     return edges;
 }
 
-std::vector<double> getWeights(std::vector<Interaction>& vect_inter) {
-    std::vector<double> weights;
-    if (vect_inter[0].area > 0) {
-        for (const Interaction& inter : vect_inter) {
-        weights.push_back(inter.area);
+void updateInterfaceStatus(const std::vector<Interaction>& edges, std::vector<ResidueID>& vertices, std::map<ResidueID, int>& vertex_map) {
+    for (const Interaction& interaction : edges) {
+        if (interaction.id1.chainID != interaction.id2.chainID) {
+            // Update interface_status for both id1 and id2
+            std::map<ResidueID, int>::iterator it1 = vertex_map.find(interaction.id1);
+            std::map<ResidueID, int>::iterator it2 = vertex_map.find(interaction.id2);
+
+            if (it1 != vertex_map.end()) {
+                vertices[it1->second].interface_status = true;
+            }
+
+            if (it2 != vertex_map.end()) {
+                vertices[it2->second].interface_status = true;
+            }
         }
     }
-    else{
-        for (const Interaction& inter : vect_inter) {
-            weights.push_back(1. / (1 + inter.distance));
-        }
+}
+
+std::vector<double> getDistanceWeights(std::vector<Interaction>& vect_inter) {
+    std::vector<double> weights;
+    for (const Interaction& inter : vect_inter) {
+        weights.push_back(1. / (1 + inter.distance));
+    }
+    return weights;
+}
+
+std::vector<double> getAreaWeights(std::vector<Interaction>& vect_inter) {
+    std::vector<double> weights;
+    for (const Interaction& inter : vect_inter) {
+        weights.push_back(inter.area);
     }
     return weights;
 }
@@ -113,38 +133,87 @@ int main(int argc, char* argv[]) {
 
         std::vector<Interaction> edges = getInteractionsFromTSV(edges_input);
 
-        std::vector<double> weights = getWeights(edges);
+        std::vector<double> dist_weights = getDistanceWeights(edges);
+        std::vector<double> area_weights = getAreaWeights(edges);
 
+        updateInterfaceStatus(edges, vertices, vertex_map);
+        
         // Creating a graph
         igraph_t graph;
         igraph_vector_int_t edge_vector;
         igraph_vector_t weight_vector;
         igraph_vector_int_init(&edge_vector, edges.size() * 2);
-        igraph_vector_init(&weight_vector, weights.size());
+        igraph_vector_init(&weight_vector, dist_weights.size());
 
         for (size_t i = 0; i < edges.size(); ++i) {
             VECTOR(edge_vector)[2 * i] = static_cast<igraph_integer_t>(vertex_map[edges[i].id1]);
             VECTOR(edge_vector)[2 * i + 1] = static_cast<igraph_integer_t>(vertex_map[edges[i].id2]);
-            VECTOR(weight_vector)[i] = (weights[i]);
+            VECTOR(weight_vector)[i] = (dist_weights[i]);
         }
 
         igraph_create(&graph, &edge_vector, 0, IGRAPH_UNDIRECTED);
         igraph_vector_int_destroy(&edge_vector);
 
-        // Applying centrality measures
-        igraph_vector_t closeness, betweenness, pagerank, eigenvector;
-        igraph_vector_int_t degree;
-        igraph_vector_int_init(&degree, 0);
-        igraph_vector_init(&closeness, 0);
-        igraph_vector_init(&betweenness, 0);
-        igraph_vector_init(&pagerank, 0);
-        igraph_vector_init(&eigenvector, 0);
 
-        igraph_degree(&graph, &degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS);
-        igraph_closeness(&graph, &closeness, NULL, NULL, igraph_vss_all(), IGRAPH_ALL, &weight_vector, false);
-        igraph_betweenness(&graph, &betweenness, igraph_vss_all(), IGRAPH_UNDIRECTED, &weight_vector);
-        igraph_pagerank(&graph, IGRAPH_PAGERANK_ALGO_ARPACK, &pagerank, NULL, igraph_vss_all(), 1, 0.85, &weight_vector, NULL);
-        igraph_eigenvector_centrality(&graph, &eigenvector, NULL, false, 0, &weight_vector, NULL);
+        igraph_t area_graph;
+        igraph_vector_t area_weight_vector;
+        igraph_vector_int_t area_edge_vector;
+        igraph_vector_int_init(&area_edge_vector, edges.size() * 2);
+        igraph_vector_init(&area_weight_vector, area_weights.size());
+
+        for (size_t i = 0; i < edges.size(); ++i) {
+            VECTOR(area_edge_vector)[2 * i] = static_cast<igraph_integer_t>(vertex_map[edges[i].id1]);
+            VECTOR(area_edge_vector)[2 * i + 1] = static_cast<igraph_integer_t>(vertex_map[edges[i].id2]);
+            VECTOR(area_weight_vector)[i] = (area_weights[i]);
+        }
+
+        igraph_create(&area_graph, &area_edge_vector, 0, IGRAPH_UNDIRECTED);
+        igraph_vector_int_destroy(&area_edge_vector);
+
+
+        // Applying centrality measures
+        igraph_vector_t unw_closeness, unw_betweenness, unw_pagerank, unw_eigenvector, dist_w_closeness, dist_w_betweenness, dist_w_pagerank, dist_w_eigenvector;
+        igraph_vector_int_t unw_degree, dist_w_degree;
+
+        igraph_vector_t area_w_closeness, area_w_betweenness, area_w_pagerank, area_w_eigenvector;
+        igraph_vector_int_t area_w_degree;
+
+        igraph_vector_int_init(&unw_degree, 0);
+        igraph_vector_init(&unw_closeness, 0);
+        igraph_vector_init(&unw_betweenness, 0);
+        igraph_vector_init(&unw_pagerank, 0);
+        igraph_vector_init(&unw_eigenvector, 0);
+        igraph_vector_int_init(&dist_w_degree, 0);
+        igraph_vector_init(&dist_w_closeness, 0);
+        igraph_vector_init(&dist_w_betweenness, 0);
+        igraph_vector_init(&dist_w_pagerank, 0);
+        igraph_vector_init(&dist_w_eigenvector, 0);
+
+        if (edges[0].area > 0.001) {
+            igraph_vector_int_init(&area_w_degree, 0);
+            igraph_vector_init(&area_w_closeness, 0);
+            igraph_vector_init(&area_w_betweenness, 0);
+            igraph_vector_init(&area_w_pagerank, 0);
+            igraph_vector_init(&area_w_eigenvector, 0);
+
+            igraph_degree(&area_graph, &area_w_degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS);
+            igraph_closeness(&area_graph, &area_w_closeness, NULL, NULL, igraph_vss_all(), IGRAPH_ALL, &area_weight_vector, false);
+            igraph_betweenness(&area_graph, &area_w_betweenness, igraph_vss_all(), IGRAPH_UNDIRECTED, &area_weight_vector);
+            igraph_pagerank(&area_graph, IGRAPH_PAGERANK_ALGO_ARPACK, &area_w_pagerank, NULL, igraph_vss_all(), 1, 0.85, &area_weight_vector, NULL);
+            igraph_eigenvector_centrality(&area_graph, &area_w_eigenvector, NULL, false, 0, &area_weight_vector, NULL);
+        }
+
+        igraph_degree(&graph, &unw_degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS);
+        igraph_closeness(&graph, &unw_closeness, NULL, NULL, igraph_vss_all(), IGRAPH_ALL, NULL, false);
+        igraph_betweenness(&graph, &unw_betweenness, igraph_vss_all(), IGRAPH_UNDIRECTED, NULL);
+        igraph_pagerank(&graph, IGRAPH_PAGERANK_ALGO_ARPACK, &unw_pagerank, NULL, igraph_vss_all(), 1, 0.85, NULL, NULL);
+        igraph_eigenvector_centrality(&graph, &unw_eigenvector, NULL, false, 0, NULL, NULL);
+
+        igraph_degree(&graph, &dist_w_degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS);
+        igraph_closeness(&graph, &dist_w_closeness, NULL, NULL, igraph_vss_all(), IGRAPH_ALL, &weight_vector, false);
+        igraph_betweenness(&graph, &dist_w_betweenness, igraph_vss_all(), IGRAPH_UNDIRECTED, &weight_vector);
+        igraph_pagerank(&graph, IGRAPH_PAGERANK_ALGO_ARPACK, &dist_w_pagerank, NULL, igraph_vss_all(), 1, 0.85, &weight_vector, NULL);
+        igraph_eigenvector_centrality(&graph, &dist_w_eigenvector, NULL, false, 0, &weight_vector, NULL);
 
         // result output
         std::ofstream output(output_file);
@@ -152,22 +221,69 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("Unable to open output file: " + output_file);
         }
 
-        output << "ID_chainID\tID_resSeq\t" << prefix << "Degree\t" << prefix << "Closeness\t" << prefix << "Betweenness\t" << prefix << "PageRank\t" << prefix << "Eigenvector\n";
-        for (int i = 0; i < igraph_vector_int_size(&degree); i++) {
+        output << "ID_chainID\tID_resSeq\tInetrface_status\t" 
+               << prefix << "unweighted_Degree\t" 
+               << prefix << "unweighted_Closeness\t" 
+               << prefix << "unweighted_Betweenness\t" 
+               << prefix << "unweighted_PageRank\t" 
+               << prefix << "unweighted_Eigenvector\t"
+               << prefix << "distance_weighted_Degree\t" 
+               << prefix << "distance_weighted_Closeness\t" 
+               << prefix << "distance_weighted_Betweenness\t" 
+               << prefix << "distance_weighted_PageRank\t" 
+               << prefix << "distance_weighted_Eigenvector";
+        if(edges[0].area > 0.001){
+            output << "\t" << prefix << "area_weighted_Degree\t"
+                   << prefix << "area_weighted_Closeness\t" 
+                   << prefix << "area_weighted_Betweenness\t" 
+                   << prefix << "area_weighted_PageRank\t" 
+                   << prefix << "area_weighted_Eigenvector";
+        }
+        output << "\n";
+
+
+        for (int i = 0; i < igraph_vector_int_size(&unw_degree); i++) {
             output << vertices[i].chainID << "\t"
                    << vertices[i].resSeq << "\t"
-                   << VECTOR(degree)[i] << "\t"
-                   << VECTOR(closeness)[i] << "\t"
-                   << VECTOR(betweenness)[i] << "\t"
-                   << VECTOR(pagerank)[i] << "\t"
-                   << VECTOR(eigenvector)[i] << "\n";
+                   << vertices[i].interface_status << "\t"
+                   << VECTOR(unw_degree)[i] << "\t"
+                   << VECTOR(unw_closeness)[i] << "\t"
+                   << VECTOR(unw_betweenness)[i] << "\t"
+                   << VECTOR(unw_pagerank)[i] << "\t"
+                   << VECTOR(unw_eigenvector)[i] << "\t"
+                   << VECTOR(dist_w_degree)[i] << "\t"
+                   << VECTOR(dist_w_closeness)[i] << "\t"
+                   << VECTOR(dist_w_betweenness)[i] << "\t"
+                   << VECTOR(dist_w_pagerank)[i] << "\t"
+                   << VECTOR(dist_w_eigenvector)[i];
+            if (edges[0].area > 0.001) {
+                output << "\t" << VECTOR(area_w_degree)[i] << "\t"
+                       << VECTOR(area_w_closeness)[i] << "\t"
+                       << VECTOR(area_w_betweenness)[i] << "\t"
+                       << VECTOR(area_w_pagerank)[i] << "\t"
+                       << VECTOR(area_w_eigenvector)[i];
+            }
+            output << "\n";
         }
 
-        igraph_vector_int_destroy(&degree);
-        igraph_vector_destroy(&closeness);
-        igraph_vector_destroy(&betweenness);
-        igraph_vector_destroy(&pagerank);
-        igraph_vector_destroy(&eigenvector);
+        igraph_vector_int_destroy(&unw_degree);
+        igraph_vector_destroy(&unw_closeness);
+        igraph_vector_destroy(&unw_betweenness);
+        igraph_vector_destroy(&unw_pagerank);
+        igraph_vector_destroy(&unw_eigenvector);
+        igraph_vector_int_destroy(&dist_w_degree);
+        igraph_vector_destroy(&dist_w_closeness);
+        igraph_vector_destroy(&dist_w_betweenness);
+        igraph_vector_destroy(&dist_w_pagerank);
+        igraph_vector_destroy(&dist_w_eigenvector);
+        if(edges[0].area > 0.001){
+            igraph_vector_int_destroy(&area_w_degree);
+            igraph_vector_destroy(&area_w_closeness);
+            igraph_vector_destroy(&area_w_betweenness);
+            igraph_vector_destroy(&area_w_pagerank);
+            igraph_vector_destroy(&area_w_eigenvector);
+            igraph_destroy(&area_graph);
+        }
         igraph_destroy(&graph);
 
     } catch (const std::exception& e) {

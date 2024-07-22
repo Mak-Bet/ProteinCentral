@@ -10,6 +10,6 @@ cat << 'EOF'
 2REX
 4MNQ
 EOF
-} | xargs -L 1 -P 8 ./scripts/run_project.bash tests
+} | xargs -L 1 -P 8 ./scripts/get_tables_from_pdb.bash tests
 
 git status ./tests
