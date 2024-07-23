@@ -36,7 +36,7 @@ std::map<ResidueID, int> getVerticesFromTSV(std::istream& input_stream, std::vec
 }
 
 // Function for reading data from TSV file
-std::vector<Interaction> getInteractionsFromTSV(std::istream& input_stream) {
+std::vector<Interaction> getInteractionsFromTSV(std::istream& input_stream, int min_seq_separator) {
     TSVData tsv_data;
     parseTSVHeadersAndRows(input_stream, tsv_data);
 
@@ -59,8 +59,9 @@ std::vector<Interaction> getInteractionsFromTSV(std::istream& input_stream) {
         if (header_index.find("area") != header_index.end()) {
             inter.area = std::stod(tokens.at(header_index.at("area")));
         }
-
-        edges.push_back(inter);
+        if (inter.id1.chainID != inter.id2.chainID || std::abs(inter.id1.resSeq - inter.id2.resSeq) >= min_seq_separator){
+            edges.push_back(inter);
+        }
     }
 
     return edges;
@@ -344,7 +345,7 @@ class GraphCentralityCalculator {
 
 int main(int argc, char* argv[]) {
     try{
-        if (argc != 5) {
+        if (argc != 6) {
             std::cerr << "Usage: " << argv[0] << " : too few arguments!\n";
             return 1;
         }
@@ -353,6 +354,7 @@ int main(int argc, char* argv[]) {
         std::string edges_file = argv[2];
         std::string output_file = argv[3];
         std::string prefix = argv[4];
+        int min_seq_separator = std::stoi(argv[5]);
         std::ifstream vertices_input(vertices_file);
         if (!vertices_input) {
             throw std::runtime_error("Unable to open file: " + vertices_file);
@@ -373,7 +375,7 @@ int main(int argc, char* argv[]) {
             throw std::runtime_error("The file " + edges_file + " is empty!");
         }
 
-        std::vector<Interaction> edges = getInteractionsFromTSV(edges_input);
+        std::vector<Interaction> edges = getInteractionsFromTSV(edges_input, min_seq_separator);
 
         std::vector<double> dist_weights = getDistanceWeights(edges);
         std::vector<double> area_weights = getAreaWeights(edges);
