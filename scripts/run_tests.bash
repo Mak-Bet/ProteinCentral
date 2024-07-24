@@ -20,4 +20,12 @@ tests/4MNQ
 EOF
 } | xargs -L 1 -P 8 Rscript scripts/merge_tables.r
 
+{
+cat << 'EOF'
+tests/1AO7
+tests/2REX
+tests/4MNQ
+EOF
+} | xargs -L 1 -P 8 Rscript scripts/get_z_score_table.r
+
 git status ./tests
