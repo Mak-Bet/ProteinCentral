@@ -9,10 +9,15 @@
 #include <cmath>
 #include <map>
 
+namespace protcentr{
 struct ResidueID {
     std::string chainID;
     int resSeq;
     bool interface_status;
+
+    ResidueID(): resSeq(0), interface_status(0){
+
+    }
 
     bool operator<(const ResidueID& other) const {
         return chainID < other.chainID || (chainID == other.chainID && resSeq < other.resSeq);
@@ -32,6 +37,10 @@ struct Interaction{
     ResidueID id2;
     double distance;
     double area;
+
+    Interaction(): distance(0.0), area(0.0){
+
+    }
 };
 
 double calculateDistance(Atom a1, Atom a2) {
@@ -46,6 +55,7 @@ std::map< ResidueID, std::vector< Atom > > groupAtoms(const std::vector<Atom>& a
     }
 
     return groupedAtoms;
+}
 }
 
 #endif // RESIDUE_H

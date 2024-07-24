@@ -37,3 +37,16 @@ ${calculate_centrality_app_path}/calculate_centrality \
   "${tests_folder_path}/residue_graph_links.tsv" \
   "${tests_folder_path}/tes_based_centrality_measures.tsv" \
   tes_ 1
+
+
+  ${calculate_centrality_app_path}/calculate_centrality \
+  "${tests_folder_path}/residue_graph_nodes.tsv" \
+  "${tests_folder_path}/dist_based_residue_graph_links.tsv" \
+  "${tests_folder_path}/sep2_dist_based_centrality_measures.tsv" \
+  sep2_dist_ 2
+
+${calculate_centrality_app_path}/calculate_centrality \
+  "${tests_folder_path}/residue_graph_nodes.tsv" \
+  "${tests_folder_path}/residue_graph_links.tsv" \
+  "${tests_folder_path}/sep2_tes_based_centrality_measures.tsv" \
+  sep2_tes_ 2

@@ -45,7 +45,7 @@ read_and_check <- function(file_path, required_columns) {
 }
 
 # Define the required columns for merging
-required_columns <- c("ID_chainID", "ID_resSeq", "Interface_status")
+required_columns <- c("ID_chainID", "ID_resSeq")
 
 # Read and check both TSV files
 data1 <- read_and_check(file1_path, required_columns)
