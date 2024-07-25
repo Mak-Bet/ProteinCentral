@@ -28,4 +28,12 @@ tests/4MNQ
 EOF
 } | xargs -L 1 -P 8 Rscript scripts/get_z_score_table.r
 
+{
+cat << 'EOF'
+1AO7
+2REX
+4MNQ
+EOF
+} | xargs -L 1 -P 8 Rscript scripts/get_final_table.r tests
+
 git status ./tests
