@@ -29,13 +29,13 @@ z_scores_data <- read.delim(file_z_scores, sep = "\t", header = TRUE, stringsAsF
 # Filtering of the first table by pdb_id
 filtered_skempi <- skempi_data[skempi_data$pdb_id == pdb_id, ]
 
-# Переименование столбцов в таблице z_scores_data
+# Renaming columns in the z_scores_data table
 colnames(filtered_skempi)[3:4] <- c("ID_chainID", "ID_resSeq")
 
-# Объединение таблиц по столбцам "chain" и "residue_number"
+# Merge tables by “ID_chainID” and “ID_resSeq” columns
 merged_data <- merge(filtered_skempi, z_scores_data, by = c("ID_chainID", "ID_resSeq"))
 
-# Сохранение результата в новый файл
+# Saving the result to a new file
 output_file <- paste0(folder_name, "/", pdb_id, "/", pdb_id, ".tsv")
 write.table(merged_data, file = output_file, sep = "\t", row.names = FALSE, quote = FALSE)
 cat("Результат сохранен в файл:", output_file, "\n")
