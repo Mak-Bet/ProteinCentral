@@ -1,4 +1,4 @@
-ID_chainID	ID_resSeq	dist_Interface_status	dist_unweighted_Degree	dist_unweighted_Closeness	dist_unweighted_Betweenness	dist_unweighted_PageRank	dist_unweighted_Eigenvector	dist_distance_weighted_Degree	dist_distance_weighted_Closeness	dist_distance_weighted_Betweenness	dist_distance_weighted_PageRank	dist_distance_weighted_Eigenvector
+ID_chainID	ID_resSeq	sep1_dist_Interface_status	sep1_dist_unweighted_Degree	sep1_dist_unweighted_Closeness	sep1_dist_unweighted_Betweenness	sep1_dist_unweighted_PageRank	sep1_dist_unweighted_Eigenvector	sep1_dist_distance_weighted_Degree	sep1_dist_distance_weighted_Closeness	sep1_dist_distance_weighted_Betweenness	sep1_dist_distance_weighted_PageRank	sep1_dist_distance_weighted_Eigenvector
 A	1	0	7	0.000160488	2330.64	0.000862525	0.0130931	1.72925	0.000839217	195	0.000853585	0.0136992
 A	2	0	9	0.000163586	3576.78	0.00104943	0.0181108	2.18489	0.000866334	9116	0.00101967	0.0201846
 A	3	0	14	0.000177368	1967.74	0.00144539	0.0432867	3.31536	0.000929706	2073	0.00138517	0.0448894
