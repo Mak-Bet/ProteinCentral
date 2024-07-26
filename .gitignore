@@ -1,4 +1,4 @@
 .vscode
 build
 .DS_Store
-graphs_data
+/output/graphs_data

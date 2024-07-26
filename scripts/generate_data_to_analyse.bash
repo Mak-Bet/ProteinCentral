@@ -12,3 +12,9 @@ if [ ! -f "$input_file" ]; then
 fi
 
 cat "$input_file" | xargs -L 1 -P 8  ./scripts/process_pdb_id.bash output/graphs_data
+
+find ./output/graphs_data -type f -name final_table.tsv \
+| sort \
+| xargs cat \
+| awk '{if(NR==1 || $1!="ID_chainID"){print $0}}' \
+> output/concatenated_final_table.tsv
