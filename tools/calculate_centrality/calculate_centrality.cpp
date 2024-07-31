@@ -89,7 +89,7 @@ void updateInterfaceStatus(const std::vector<Interaction>& edges, const std::map
 std::vector<double> getDistanceWeights(std::vector<Interaction>& vect_inter) {
     std::vector<double> weights;
     for (const Interaction& inter : vect_inter) {
-        weights.push_back(1. / (1 + inter.distance));
+        weights.push_back(inter.distance);
     }
     return weights;
 }
@@ -97,7 +97,7 @@ std::vector<double> getDistanceWeights(std::vector<Interaction>& vect_inter) {
 std::vector<double> getAreaWeights(std::vector<Interaction>& vect_inter) {
     std::vector<double> weights;
     for (const Interaction& inter : vect_inter) {
-        weights.push_back(inter.area);
+        weights.push_back(1. / (1 + inter.area));
     }
     return weights;
 }
@@ -161,7 +161,7 @@ class GraphCentralityCalculator {
             checkIgraphError(error_code, "Failed to initialize dist_w_eigenvector vector.");
 
             // Check if area weights are valid and initialize area graph
-            if (!area_weights.empty() && (edges[0].area > 0.001) && (edges[0].area < 1000)) {
+            if (!area_weights.empty() && (edges[0].area > 0.0000001) && (edges[0].area < 1000)) {
                 area_graph_initialized = true;
                 error_code = igraph_vector_int_init(&area_edge_vector, edges.size() * 2);
                 checkIgraphError(error_code, "Failed to initialize area_edge_vector.");
