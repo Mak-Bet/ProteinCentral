@@ -52,6 +52,11 @@ for (prefix in prefixes) {
         TN <- NA
         FP <- NA
         FN <- NA
+        PPV <- NA
+        NPV <- NA
+        Sensitivity <- NA
+        Specificity <- NA
+        F1_score <- NA
         MCC <- NA
       } else {
         # Calculate TP, TN, FP, FN
@@ -70,7 +75,51 @@ for (prefix in prefixes) {
         FP <- as.numeric(FP)
         FN <- as.numeric(FN)
         
-        # Calculate Matthews Correlation Coefficient (MCC)
+        tryCatch({
+          PPV <- TP / (TP + FP)
+        }, warning = function(w) {
+          warning("Warning in PPV calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          PPV <- NA
+          warning("Error calculating PPV for column ", col_name, ": ", e$message)
+        })
+        
+        tryCatch({
+          NPV <- TN / (TN + FN)
+        }, warning = function(w) {
+          warning("Warning in NPV calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          NPV <- NA
+          warning("Error calculating NPV for column ", col_name, ": ", e$message)
+        })
+        
+        tryCatch({
+          Sensitivity <- TP / (TP + FN)
+        }, warning = function(w) {
+          warning("Warning in Sensitivity calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          Sensitivity <- NA
+          warning("Error calculating Sensitivity for column ", col_name, ": ", e$message)
+        })
+        
+        tryCatch({
+          Specificity <- TN / (TN + FP)
+        }, warning = function(w) {
+          warning("Warning in Specificity calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          Specificity <- NA
+          warning("Error calculating Specificity for column ", col_name, ": ", e$message)
+        })
+        
+        tryCatch({
+          F1_score <- (2 * TP) / ((2 * TP) + FP + FN)
+        }, warning = function(w) {
+          warning("Warning in F1_score calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          F1_score <- NA
+          warning("Error calculating F1_score for column ", col_name, ": ", e$message)
+        })
+        
         tryCatch({
           MCC <- (TP * TN - FP * FN) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
         }, warning = function(w) {
@@ -82,13 +131,13 @@ for (prefix in prefixes) {
       }
       
       # Store results in list
-      result_list[[measure]] <- c(TP, TN, FP, FN, MCC)
+      result_list[[measure]] <- c(TP, TN, FP, FN, PPV, NPV, Sensitivity, Specificity, F1_score, MCC)
     }
   }
   
   # Convert result list to data frame
   result_df <- as.data.frame(result_list)
-  rownames(result_df) <- c("TP", "TN", "FP", "FN", "MCC")
+  rownames(result_df) <- c("TP", "TN", "FP", "FN", "PPV", "NPV", "Sensitivity", "Specificity", "F1_score", "MCC")
   
   # Define output file path
   output_file <- paste0("/Users/makarbetlei/Documents/ProteinCentral/output/analysis_data/", prefix, ".tsv")
