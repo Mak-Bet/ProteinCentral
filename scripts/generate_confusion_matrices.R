@@ -1,9 +1,11 @@
+# Load necessary libraries
 library(rpart)
 library(rpart.plot)
 
+# Define file path
 file_path <- "/Users/makarbetlei/Documents/ProteinCentral/output/concatenated_final_table.tsv"
 
-# Load the data
+# Load the data using base R functions
 tryCatch({
   data <- read.table(file_path, header = TRUE, sep = "\t")
 }, error = function(e) {
@@ -18,6 +20,7 @@ tryCatch({
   stop("Error inspecting data: ", e$message)
 })
 
+# User input for ddG column name
 ddG_col <- "ddG"
 
 # Ensure ddG_col exists in the data
@@ -27,6 +30,7 @@ tryCatch({
   stop("Error checking columns: ", e$message)
 })
 
+# Define variables
 threshold <- 0.592
 
 # Identify columns containing centrality measures
@@ -42,29 +46,40 @@ for (prefix in prefixes) {
   for (measure in centrality_measures) {
     col_name <- paste0(prefix, measure)
     if (col_name %in% names(data)) {
-      tryCatch({
-        TP <- sum(abs(data[[ddG_col]]) >= threshold & data[[col_name]] >= 2)
-        TN <- sum(abs(data[[ddG_col]]) < threshold & data[[col_name]] < 2)
-        FP <- sum(abs(data[[ddG_col]]) < threshold & data[[col_name]] >= 2)
-        FN <- sum(abs(data[[ddG_col]]) >= threshold & data[[col_name]] < 2)
-      }, error = function(e) {
-        stop("Error calculating TP, TN, FP, FN for column ", col_name, ": ", e$message)
-      })
-      
-      # Convert to numeric to avoid integer overflow
-      TP <- as.numeric(TP)
-      TN <- as.numeric(TN)
-      FP <- as.numeric(FP)
-      FN <- as.numeric(FN)
-      
-      # Calculate Matthews Correlation Coefficient (MCC)
-      tryCatch({
-        MCC <- (TP * TN - FP * FN) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
-      }, warning = function(w) {
-        warning("Warning in MCC calculation for column ", col_name, ": ", w$message)
-      }, error = function(e) {
-        stop("Error calculating MCC for column ", col_name, ": ", e$message)
-      })
+      # Handle missing data
+      if (all(is.na(data[[col_name]]))) {
+        TP <- NA
+        TN <- NA
+        FP <- NA
+        FN <- NA
+        MCC <- NA
+      } else {
+        # Calculate TP, TN, FP, FN
+        tryCatch({
+          TP <- sum(abs(data[[ddG_col]]) >= threshold & data[[col_name]] >= 2, na.rm = TRUE)
+          TN <- sum(abs(data[[ddG_col]]) < threshold & data[[col_name]] < 2, na.rm = TRUE)
+          FP <- sum(abs(data[[ddG_col]]) < threshold & data[[col_name]] >= 2, na.rm = TRUE)
+          FN <- sum(abs(data[[ddG_col]]) >= threshold & data[[col_name]] < 2, na.rm = TRUE)
+        }, error = function(e) {
+          stop("Error calculating TP, TN, FP, FN for column ", col_name, ": ", e$message)
+        })
+        
+        # Convert to numeric to avoid integer overflow
+        TP <- as.numeric(TP)
+        TN <- as.numeric(TN)
+        FP <- as.numeric(FP)
+        FN <- as.numeric(FN)
+        
+        # Calculate Matthews Correlation Coefficient (MCC)
+        tryCatch({
+          MCC <- (TP * TN - FP * FN) / sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+        }, warning = function(w) {
+          warning("Warning in MCC calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          MCC <- NA
+          warning("Error calculating MCC for column ", col_name, ": ", e$message)
+        })
+      }
       
       # Store results in list
       result_list[[measure]] <- c(TP, TN, FP, FN, MCC)
