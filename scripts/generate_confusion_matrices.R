@@ -30,8 +30,16 @@ tryCatch({
   stop("Error checking columns: ", e$message)
 })
 
-# Define variables
-threshold <- 0.592
+# Get the threshold value from the command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) == 0) {
+  stop("Threshold value not provided. Please provide the threshold as a command line argument.")
+}
+threshold <- as.numeric(args[1])
+
+# Create a directory named after the threshold value
+output_dir <- paste0("/Users/makarbetlei/Documents/ProteinCentral/output/analysis_data/threshold_", threshold)
+dir.create(output_dir, showWarnings = FALSE)
 
 # Identify columns containing centrality measures
 centrality_measures <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector")
@@ -139,8 +147,8 @@ for (prefix in prefixes) {
   result_df <- as.data.frame(result_list)
   rownames(result_df) <- c("TP", "TN", "FP", "FN", "PPV", "NPV", "Sensitivity", "Specificity", "F1_score", "MCC")
   
-  # Define output file path
-  output_file <- paste0("/Users/makarbetlei/Documents/ProteinCentral/output/analysis_data/", prefix, ".tsv")
+# Define output file path within the threshold directory
+  output_file <- paste0(output_dir, "/", prefix, ".tsv")
   
   # Save results to file
   tryCatch({
