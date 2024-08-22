@@ -5,12 +5,11 @@ library(rpart.plot)
 # Define file path
 file_path <- "/Users/makarbetlei/Documents/ProteinCentral/output/concatenated_final_table.tsv"
 
-# Load the data using base R functions
-tryCatch({
-  data <- read.table(file_path, header = TRUE, sep = "\t")
-}, error = function(e) {
-  stop("Error loading data: ", e$message)
-})
+dt=read.table(file_path, header=TRUE, stringsAsFactors=FALSE)
+odt=dt[order(dt$pdb_id, dt$ID_chainID, dt$ID_resSeq, 0-abs(dt$ddG)),]
+fodt=odt[!duplicated(odt[,c("pdb_id", "ID_chainID", "ID_resSeq")]),]
+
+data <- fodt
 
 # Inspect the data
 tryCatch({
