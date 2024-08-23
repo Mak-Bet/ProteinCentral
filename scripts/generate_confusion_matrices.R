@@ -9,6 +9,14 @@ dt=read.table(file_path, header=TRUE, stringsAsFactors=FALSE)
 odt=dt[order(dt$pdb_id, dt$ID_chainID, dt$ID_resSeq, 0-abs(dt$ddG)),]
 fodt=odt[!duplicated(odt[,c("pdb_id", "ID_chainID", "ID_resSeq")]),]
 
+fodt_file_path <- "/Users/makarbetlei/Documents/ProteinCentral/output/filtered_concatenated_final_table.tsv"
+tryCatch({
+  write.table(fodt, file = fodt_file_path, sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+  print(paste("fodt table saved to:", fodt_file_path))
+}, error = function(e) {
+  stop("Error saving fodt table to file: ", e$message)
+})
+
 data <- fodt
 
 # Inspect the data
