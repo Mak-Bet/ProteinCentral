@@ -1,33 +1,59 @@
 library(PRROC)
+
 data <- read.csv("/Users/makarbetlei/Documents/ProteinCentral/output/filtered_concatenated_final_table.tsv", sep="\t")
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) == 0) {
- stop("Threshold value not provided. Please provide the threshold as a command line argument.")
+if (length(args) < 1) {
+  stop("You must provide a threshold value and a prefix as command line arguments")
 }
-threshold <- as.numeric(args[1])
 
-# Создаем вектор чисел
-degree_z_scores <- data$sep1_dist_unweighted_Degree
-closeness_z_scores <- data$sep1_dist_unweighted_Closeness
-betweenness_z_scores <- data$sep1_dist_unweighted_Betweenness
-pagerank_z_scores <- data$sep1_dist_unweighted_PageRank
-eigenvector_z_scores <- data$sep1_dist_unweighted_Eigenvector
+prefix <- args[1]
 
-# Определяем условие: значения больше 2
-labels <- ifelse(abs(data$ddG) >= threshold, 1, 0)
+thresholds <- c(2, 1.184, 0.592)
 
-pr_degree <- pr.curve(scores.class0 = degree_z_scores, weights.class0 = labels, curve = TRUE)
-pr_closeness <- pr.curve(scores.class0 = closeness_z_scores, weights.class0 = labels, curve = TRUE)
-pr_betweenness <- pr.curve(scores.class0 = betweenness_z_scores, weights.class0 = labels, curve = TRUE)
-pr_pagerank <- pr.curve(scores.class0 = pagerank_z_scores, weights.class0 = labels, curve = TRUE)
-pr_eigenvector <- pr.curve(scores.class0 = eigenvector_z_scores, weights.class0 = labels, curve = TRUE)
+# Key words that must be present in the column name
+key_words <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector")
 
-# Выводим результат
-plot(pr_degree, main = "PR-кривая на основе z-оценок, ddG threshold = 2", col = "blue", lwd = 1)
-lines(pr_closeness$curve[,1], pr_closeness$curve[,2], col = "red", lwd = 1)
-lines(pr_betweenness$curve[,1], pr_betweenness$curve[,2], col = "green", lwd = 1)
-lines(pr_pagerank$curve[,1], pr_pagerank$curve[,2], col = "yellow", lwd = 1)
-lines(pr_eigenvector$curve[,1], pr_eigenvector$curve[,2], col = "purple", lwd = 1)
+# Search for relevant columns containing both keywords and prefixes
+column_names <- grep(paste0("^", prefix, ".*(", paste(key_words, collapse = "|"), ")"), names(data), value = TRUE)
 
-legend("bottomright", legend = c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector"), col = c("blue", "red", "green", "yellow", "purple"), lwd = 1.5)
+if (length(column_names) < 1) {
+  stop("Columns with the specified keywords and prefix were not found")
+}
+
+# Obtaining z-score values for each column
+z_scores_list <- lapply(column_names, function(col) {
+  scores <- data[[col]]
+  scores[is.na(scores)] <- 0  # Замена NA на 0
+  return(scores)
+})
+
+# Opening a PDF of the device to save the graph
+pdf_file_name <- paste0("/Users/makarbetlei/Documents/ProteinCentral/output/", prefix, "_PR_curves.pdf")
+pdf(pdf_file_name, width = 15, height = 5)
+
+par(mfrow = c(1, length(thresholds)))
+
+colors <- c("blue","red", "green", "yellow", "purple")
+
+# Plotting for each value of threshold
+for (threshold in thresholds) {
+  labels <- ifelse(abs(data$ddG) >= threshold, 1, 0)
+  
+  # Calculation of PR curves
+  pr_curves <- lapply(z_scores_list, function(scores) pr.curve(scores.class0 = scores, weights.class0 = labels, curve = TRUE))
+  
+  plot(pr_curves[[1]], main = paste("PR curve based on z-scores, ddG threshold =", threshold), col = colors[1], lwd = 1)
+  
+  for (i in 2:length(pr_curves)) {
+    lines(pr_curves[[i]]$curve[,1], pr_curves[[i]]$curve[,2], col = colors[i], lwd = 1)
+  }
+  
+  grid()
+  
+  legend_labels <- sub(paste0("^", prefix), "", column_names)
+  legend("bottomright", legend = legend_labels, col = colors[1:length(pr_curves)], lwd = 1.5)
+}
+
+# Closing the PDF device
+dev.off()
