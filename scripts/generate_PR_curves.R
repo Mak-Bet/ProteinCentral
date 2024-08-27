@@ -24,7 +24,7 @@ if (length(column_names) < 1) {
 # Obtaining z-score values for each column
 z_scores_list <- lapply(column_names, function(col) {
   scores <- data[[col]]
-  scores[is.na(scores)] <- 0  # Замена NA на 0
+  scores[is.na(scores)] <- 0
   return(scores)
 })
 
@@ -42,9 +42,17 @@ for (threshold in thresholds) {
   
   # Calculation of PR curves
   pr_curves <- lapply(z_scores_list, function(scores) pr.curve(scores.class0 = scores, weights.class0 = labels, curve = TRUE))
+  auc_values <- sapply(pr_curves, function(pr) pr$auc.integral)
   
-  plot(pr_curves[[1]], main = paste("PR curve based on z-scores, ddG threshold =", threshold), col = colors[1], lwd = 1)
+  mean_auc <- mean(auc_values)
+
+  plot(pr_curves[[1]]$curve[,1], pr_curves[[1]]$curve[,2], type = "l", 
+       main = paste("PR curve, ddG threshold =", threshold, "\nMean AUC =", round(mean_auc, 6)), 
+       col = colors[1], lwd = 1, xlab = "Recall", ylab = "Precision", xlim = c(0, 1), ylim = c(0, 1)) 
   
+  min_y_at_max_x <- min(sapply(pr_curves, function(pr) pr$curve[which.max(pr$curve[,1]), 2]))
+  abline(h = min_y_at_max_x, col = "grey", lty = 2)
+       
   for (i in 2:length(pr_curves)) {
     lines(pr_curves[[i]]$curve[,1], pr_curves[[i]]$curve[,2], col = colors[i], lwd = 1)
   }
