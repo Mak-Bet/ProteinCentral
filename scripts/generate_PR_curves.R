@@ -4,7 +4,7 @@ data <- read.csv("/Users/makarbetlei/Documents/ProteinCentral/output/filtered_co
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 1) {
-  stop("You must provide a threshold value and a prefix as command line arguments")
+  stop("You must provide a prefix as command line arguments")
 }
 
 prefix <- args[1]
@@ -34,7 +34,7 @@ pdf(pdf_file_name, width = 15, height = 5)
 
 par(mfrow = c(1, length(thresholds)))
 
-colors <- c("blue","red", "green", "yellow", "purple")
+colors <- c("blue","red", "green", "yellow", "purple", "orange")
 
 # Plotting for each value of threshold
 for (threshold in thresholds) {

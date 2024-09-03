@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <numeric>
 #include <igraph.h>
 #include <tsv_parsing.h>
 #include <residue.h>
@@ -102,8 +103,34 @@ std::vector<double> getAreaWeights(std::vector<Interaction>& vect_inter) {
     return weights;
 }
 
+// Функция для вычисления средней центральности ребер для вершины
+double calculateAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id) {
+    std::vector<double> betweenness_values;
+    
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        betweenness_values.push_back(VECTOR(edge_betweenness)[eid]);
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    if (!betweenness_values.empty()) {
+        return std::accumulate(betweenness_values.begin(), betweenness_values.end(), 0.0) / betweenness_values.size();
+    } else {
+        return 0.0;
+    }
+}
+
 // GraphCentralityCalculator Class Definition
 class GraphCentralityCalculator {
+    igraph_vector_t unw_edge_betweenness, dist_w_edge_betweenness, area_w_edge_betweenness;
     public:
         GraphCentralityCalculator(const std::vector<Interaction>& edges,
                                 const std::map<ResidueID, int>& vertex_map,
@@ -145,9 +172,8 @@ class GraphCentralityCalculator {
             error_code = igraph_vector_init(&unw_eigenvector, 0);
             checkIgraphError(error_code, "Failed to initialize unw_eigenvector vector.");
 
-            error_code = igraph_vector_init(&unw_edge_betweenness, 0);
+            error_code = igraph_vector_init(&unw_edge_betweenness, edges.size());
             checkIgraphError(error_code, "Failed to initialize unw_edge_betweenness vector.");
-
 
             error_code = igraph_vector_init(&dist_w_degree, 0);
             checkIgraphError(error_code, "Failed to initialize dist_w_degree vector.");
@@ -164,12 +190,11 @@ class GraphCentralityCalculator {
             error_code = igraph_vector_init(&dist_w_eigenvector, 0);
             checkIgraphError(error_code, "Failed to initialize dist_w_eigenvector vector.");
 
-            error_code = igraph_vector_init(&dist_w_edge_betweenness, 0);
+            error_code = igraph_vector_init(&dist_w_edge_betweenness, edges.size());
             checkIgraphError(error_code, "Failed to initialize dist_w_edge_betweenness vector.");
 
-
             // Check if area weights are valid and initialize area graph
-            if (!area_weights.empty() && (edges[0].area > 0.0000000000000000001) && (edges[0].area < 100000)) {
+            if (!area_weights.empty() && (edges[0].area > 0.0000001) && (edges[0].area < 1000)) {
                 area_graph_initialized = true;
                 error_code = igraph_vector_int_init(&area_edge_vector, edges.size() * 2);
                 checkIgraphError(error_code, "Failed to initialize area_edge_vector.");
@@ -202,7 +227,7 @@ class GraphCentralityCalculator {
                 error_code = igraph_vector_init(&area_w_eigenvector, 0);
                 checkIgraphError(error_code, "Failed to initialize area_w_eigenvector vector.");
 
-                error_code = igraph_vector_init(&area_w_edge_betweenness, 0);
+                error_code = igraph_vector_init(&area_w_edge_betweenness, edges.size());
                 checkIgraphError(error_code, "Failed to initialize area_w_edge_betweenness vector.");
             }
         }
@@ -215,7 +240,6 @@ class GraphCentralityCalculator {
             igraph_vector_destroy(&unw_pagerank);
             igraph_vector_destroy(&unw_eigenvector);
             igraph_vector_destroy(&unw_edge_betweenness);
-
             igraph_vector_destroy(&dist_w_degree);
             igraph_vector_destroy(&dist_w_closeness);
             igraph_vector_destroy(&dist_w_betweenness);
@@ -223,7 +247,7 @@ class GraphCentralityCalculator {
             igraph_vector_destroy(&dist_w_eigenvector);
             igraph_vector_destroy(&dist_w_edge_betweenness);
             igraph_vector_destroy(&distance_weight_vector);
-            
+
             if (area_graph_initialized) {
                 igraph_vector_destroy(&area_w_degree);
                 igraph_vector_destroy(&area_w_closeness);
@@ -235,7 +259,6 @@ class GraphCentralityCalculator {
                 igraph_destroy(&area_graph);
             }
             igraph_destroy(&graph);
-
         }
         void calculateCentrality() {
             int error_code;
@@ -256,7 +279,7 @@ class GraphCentralityCalculator {
             checkIgraphError(error_code, "Failed to calculate unweighted eigenvector centrality.");
 
             error_code = igraph_edge_betweenness(&graph, &unw_edge_betweenness, IGRAPH_UNDIRECTED, NULL);
-            checkIgraphError(error_code, "Failed to calculate unweighted edge betweenness centrality.");
+            checkIgraphError(error_code, "Failed to calculate unweighted edge betweenness.");
 
 
             error_code = igraph_strength(&graph, &dist_w_degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS, &distance_weight_vector);
@@ -275,8 +298,7 @@ class GraphCentralityCalculator {
             checkIgraphError(error_code, "Failed to calculate distance-weighted eigenvector centrality.");
 
             error_code = igraph_edge_betweenness(&graph, &dist_w_edge_betweenness, IGRAPH_UNDIRECTED, &distance_weight_vector);
-            checkIgraphError(error_code, "Failed to calculate distance-weighted edge betweenness centrality.");
-
+            checkIgraphError(error_code, "Failed to calculate distance-weighted edge betweenness.");
 
             if (area_graph_initialized) {
                 error_code = igraph_strength(&area_graph, &area_w_degree, igraph_vss_all(), IGRAPH_ALL, IGRAPH_NO_LOOPS, &area_weight_vector);
@@ -294,72 +316,8 @@ class GraphCentralityCalculator {
                 error_code = igraph_eigenvector_centrality(&area_graph, &area_w_eigenvector, NULL, false, 0, &area_weight_vector, NULL);
                 checkIgraphError(error_code, "Failed to calculate area-weighted eigenvector centrality.");
 
-                error_code = igraph_edge_betweenness(&graph, &area_w_edge_betweenness, IGRAPH_UNDIRECTED, &area_weight_vector);
-                checkIgraphError(error_code, "Failed to calculate area-weighted edge betweenness centrality.");
-            }
-
-            // Calculate average edge betweenness for each vertex
-            std::map<int, double> unw_vertex_betweenness_sum, dist_w_vertex_betweenness_sum;
-            std::map<int, int> unw_vertex_edge_count, dist_w_vertex_edge_count;
-
-            for (int i = 0; i < igraph_ecount(&graph); ++i) {
-                igraph_integer_t from, to;
-                igraph_edge(&graph, i, &from, &to);
-
-                unw_vertex_betweenness_sum[from] += VECTOR(unw_edge_betweenness)[i];
-                unw_vertex_betweenness_sum[to] += VECTOR(unw_edge_betweenness)[i];
-
-                unw_vertex_edge_count[from]++;
-                unw_vertex_edge_count[to]++;
-
-
-                dist_w_vertex_betweenness_sum[from] += VECTOR(dist_w_edge_betweenness)[i];
-                dist_w_vertex_betweenness_sum[to] += VECTOR(dist_w_edge_betweenness)[i];
-
-                dist_w_vertex_edge_count[from]++;
-                dist_w_vertex_edge_count[to]++;
-            }
-
-            for (const std::pair<const int, double>& pair : unw_vertex_betweenness_sum) {
-                if (unw_vertex_edge_count[pair.first] <= 0){
-                    unw_average_betweenness_per_vertex[pair.first] = 0;
-                }
-                else{
-                    unw_average_betweenness_per_vertex[pair.first] = pair.second / unw_vertex_edge_count[pair.first];
-                }
-            }
-            for (const std::pair<const int, double>& pair : dist_w_vertex_betweenness_sum) {
-                if (dist_w_vertex_edge_count[pair.first] <= 0){
-                    dist_w_average_betweenness_per_vertex[pair.first] = 0;
-                }
-                else{
-                    dist_w_average_betweenness_per_vertex[pair.first] = pair.second / dist_w_vertex_edge_count[pair.first];
-                }
-            }
-
-            if (area_graph_initialized) {
-                std::map<int, double> area_w_vertex_betweenness_sum;
-                std::map<int, int> area_w_vertex_edge_count;
-
-                for (int i = 0; i < igraph_ecount(&graph); ++i) {
-                    igraph_integer_t from, to;
-                    igraph_edge(&graph, i, &from, &to);
-
-                    area_w_vertex_betweenness_sum[from] += VECTOR(area_w_edge_betweenness)[i];
-                    area_w_vertex_betweenness_sum[to] += VECTOR(area_w_edge_betweenness)[i];
-
-                    area_w_vertex_edge_count[from]++;
-                    area_w_vertex_edge_count[to]++;
-                }
-
-                for (const std::pair<const int, double>& pair : area_w_vertex_betweenness_sum) {
-                    if (area_w_vertex_edge_count[pair.first] <= 0){
-                        area_w_average_betweenness_per_vertex[pair.first] = 0;
-                    }
-                    else{
-                        area_w_average_betweenness_per_vertex[pair.first] = pair.second / area_w_vertex_edge_count[pair.first];
-                    }
-                }
+                error_code = igraph_edge_betweenness(&area_graph, &area_w_edge_betweenness, IGRAPH_UNDIRECTED, &area_weight_vector);
+                checkIgraphError(error_code, "Failed to calculate area-weighted edge betweenness.");
             }
         }
 
@@ -372,20 +330,20 @@ class GraphCentralityCalculator {
                 << prefix << "unweighted_Betweenness\t"
                 << prefix << "unweighted_PageRank\t"
                 << prefix << "unweighted_Eigenvector\t"
-                << prefix << "unweighted_average_Edge_Betweenness\t"
+                << prefix << "unweighted_av_Edge_Betweenness\t"
                 << prefix << "distance_weighted_Degree\t"
                 << prefix << "distance_weighted_Closeness\t"
                 << prefix << "distance_weighted_Betweenness\t"
                 << prefix << "distance_weighted_PageRank\t"
                 << prefix << "distance_weighted_Eigenvector\t"
-                << prefix << "distance_weighted_average_Edge_Betweenness";
+                << prefix << "distance_weighted_av_Edge_Betweenness";
             if (area_graph_initialized) {
                 output << "\t" << prefix << "area_weighted_Degree\t"
                     << prefix << "area_weighted_Closeness\t"
                     << prefix << "area_weighted_Betweenness\t"
                     << prefix << "area_weighted_PageRank\t"
                     << prefix << "area_weighted_Eigenvector\t"
-                    << prefix << "area_weighted_average_Edge_Betweenness";
+                    << prefix << "area_weighted_av_Edge_Betweenness";
             }
             output << "\n";
 
@@ -398,20 +356,20 @@ class GraphCentralityCalculator {
                     << VECTOR(unw_betweenness)[i] << "\t"
                     << VECTOR(unw_pagerank)[i] << "\t"
                     << VECTOR(unw_eigenvector)[i] << "\t"
-                    << unw_average_betweenness_per_vertex.at(i) << "\t"
+                    << calculateAverageEdgeBetweenness(graph, unw_edge_betweenness, i) << "\t"
                     << VECTOR(dist_w_degree)[i] << "\t"
                     << VECTOR(dist_w_closeness)[i] << "\t"
                     << VECTOR(dist_w_betweenness)[i] << "\t"
                     << VECTOR(dist_w_pagerank)[i] << "\t"
                     << VECTOR(dist_w_eigenvector)[i] << "\t"
-                    << dist_w_average_betweenness_per_vertex.at(i);
+                    << calculateAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i);
                 if (area_graph_initialized) {
                     output << "\t" << VECTOR(area_w_degree)[i] << "\t"
                                    << VECTOR(area_w_closeness)[i] << "\t"
                                    << VECTOR(area_w_betweenness)[i] << "\t"
                                    << VECTOR(area_w_pagerank)[i] << "\t"
                                    << VECTOR(area_w_eigenvector)[i] << "\t"
-                                   << area_w_average_betweenness_per_vertex.at(i);
+                                   << calculateAverageEdgeBetweenness(graph, area_w_edge_betweenness, i);
                 }
                 output << "\n";
             }
@@ -426,13 +384,10 @@ class GraphCentralityCalculator {
         bool area_graph_initialized;
 
         // Centrality measure vectors
-        igraph_vector_t unw_closeness, unw_betweenness, unw_pagerank, unw_eigenvector, unw_edge_betweenness;
+        igraph_vector_t unw_closeness, unw_betweenness, unw_pagerank, unw_eigenvector;
         igraph_vector_int_t unw_degree;
-        igraph_vector_t dist_w_degree, dist_w_closeness, dist_w_betweenness, dist_w_pagerank, dist_w_eigenvector, dist_w_edge_betweenness;
-        igraph_vector_t area_w_degree, area_w_closeness, area_w_betweenness, area_w_pagerank, area_w_eigenvector, area_w_edge_betweenness;
-
-        std::map<int, double> unw_average_betweenness_per_vertex, dist_w_average_betweenness_per_vertex;
-        std::map<int, double> area_w_average_betweenness_per_vertex;
+        igraph_vector_t dist_w_degree, dist_w_closeness, dist_w_betweenness, dist_w_pagerank, dist_w_eigenvector;
+        igraph_vector_t area_w_degree, area_w_closeness, area_w_betweenness, area_w_pagerank, area_w_eigenvector;
 
         void checkIgraphError(int error_code, const std::string& message) {
         if (error_code != IGRAPH_SUCCESS) {
@@ -480,7 +435,7 @@ int main(int argc, char* argv[]) {
         std::vector<double> area_weights = protcentr::getAreaWeights(edges);
 
         protcentr::updateInterfaceStatus(edges, vertex_map, vertices);
-
+        
         protcentr::GraphCentralityCalculator calculator(edges, vertex_map, dist_weights, area_weights);
         calculator.calculateCentrality();
 
