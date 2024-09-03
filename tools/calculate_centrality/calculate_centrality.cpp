@@ -103,7 +103,7 @@ std::vector<double> getAreaWeights(std::vector<Interaction>& vect_inter) {
     return weights;
 }
 
-// Функция для вычисления средней центральности ребер для вершины
+// Function for calculating average centrality of edges for a vertex
 double calculateAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id) {
     std::vector<double> betweenness_values;
     
