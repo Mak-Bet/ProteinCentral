@@ -12,7 +12,7 @@ prefix <- args[1]
 thresholds <- c(2, 1.184, 0.592)
 
 # Key words that must be present in the column name
-key_words <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector")
+key_words <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector", "av_Edge_Betweenness")
 
 # Search for relevant columns containing both keywords and prefixes
 column_names <- grep(paste0("^", prefix, ".*(", paste(key_words, collapse = "|"), ")"), names(data), value = TRUE)
