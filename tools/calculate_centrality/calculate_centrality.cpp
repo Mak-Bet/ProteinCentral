@@ -87,6 +87,19 @@ void updateInterfaceStatus(const std::vector<Interaction>& edges, const std::map
     }
 }
 
+std::vector<double> getIndicatorIDs(std::vector<Interaction>& vect_inter){
+    std::vector<double> inter_chain_IDs;
+    for (const Interaction& inter : vect_inter) {
+        if(inter.id1.chainID == inter.id2.chainID){
+            inter_chain_IDs.push_back(0.);
+        }
+        else {
+            inter_chain_IDs.push_back(1.);
+        }
+    }
+    return inter_chain_IDs;
+}
+
 std::vector<double> getDistanceWeights(std::vector<Interaction>& vect_inter) {
     std::vector<double> weights;
     for (const Interaction& inter : vect_inter) {
@@ -103,8 +116,8 @@ std::vector<double> getAreaWeights(std::vector<Interaction>& vect_inter) {
     return weights;
 }
 
-// Function for calculating average centrality of edges for a vertex
-double calculateAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id) {
+// Functions for calculating average centrality of edges for a vertex
+double calculateSimpleAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id) {
     std::vector<double> betweenness_values;
     
     igraph_es_t es;
@@ -121,16 +134,194 @@ double calculateAverageEdgeBetweenness(const igraph_t& graph, const igraph_vecto
     igraph_eit_destroy(&eit);
     igraph_es_destroy(&es);
 
+    double sum = 0.0;
+    for (double val : betweenness_values) {
+        sum += val;
+    }
+
     if (!betweenness_values.empty()) {
-        return std::accumulate(betweenness_values.begin(), betweenness_values.end(), 0.0) / betweenness_values.size();
+        return sum / betweenness_values.size();
     } else {
         return 0.0;
     }
 }
 
+
+
+
+
+
+// Function to calculate weighted average edge betweenness using inter_chain_indicator as weights
+double calculateIndicatorAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const std::map<igraph_integer_t, double>& inter_chain_indicators) {
+    double weighted_sum = 0.0;
+    double total_weight = 0.0;
+
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        double weight = inter_chain_indicators.at(eid);
+        weighted_sum += VECTOR(edge_betweenness)[eid] * weight;
+        total_weight += weight;
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    return total_weight > 0 ? weighted_sum / total_weight : 0.0;
+}
+
+// Function to calculate weighted average edge betweenness using distance weights
+double calculateWeightedAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const igraph_vector_t& weights) {
+    double weighted_sum = 0.0;
+    double total_weight = 0.0;
+
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        double weight = VECTOR(weights)[eid];
+        weighted_sum += VECTOR(edge_betweenness)[eid] * weight;
+        total_weight += weight;
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    return total_weight > 0 ? weighted_sum / total_weight : 0.0;
+}
+
+// Function to calculate weighted average edge betweenness using product of inter_chain_indicator and distance weights
+double calculateCombinedAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const std::map<igraph_integer_t, double>& inter_chain_indicators, const igraph_vector_t& weights) {
+    double weighted_sum = 0.0;
+    double total_weight = 0.0;
+
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        double inter_chain_weight = inter_chain_indicators.at(eid);
+        double weight = VECTOR(weights)[eid] * inter_chain_weight;
+        weighted_sum += VECTOR(edge_betweenness)[eid] * weight;
+        total_weight += weight;
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    return total_weight > 0 ? weighted_sum / total_weight : 0.0;
+}
+
+
+
+
+
+
+/* double calculateIndicatorAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const std::vector<double>& inter_chain_IDs) {
+    std::vector<double> betweenness_values;
+    
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        betweenness_values.push_back(VECTOR(edge_betweenness)[eid]);
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    double sum = 0.0;
+    int i = 0;
+    for (double val : betweenness_values) {
+        sum += (val * inter_chain_IDs[i]);
+        i++;
+    }
+
+    if (!betweenness_values.empty()) {
+        return sum / betweenness_values.size();
+    } else {
+        return 0.0;
+    }
+}
+
+double calculateWeightedAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const std::vector<double>& weights) {
+    std::vector<double> betweenness_values;
+    
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        betweenness_values.push_back(VECTOR(edge_betweenness)[eid]);
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    double sum = 0.0;
+    for (double val : betweenness_values) {
+        sum += (val * weights[betweenness_values[val]]);
+    }
+
+    if (!betweenness_values.empty()) {
+        return sum / betweenness_values.size();
+    } else {
+        return 0.0;
+    }
+}
+
+double calculateCombinedAverageEdgeBetweenness(const igraph_t& graph, const igraph_vector_t& edge_betweenness, int vertex_id, const std::vector<double>& inter_chain_IDs, const std::vector<double>& weights) {
+    std::vector<double> betweenness_values;
+    
+    igraph_es_t es;
+    igraph_eit_t eit;
+    igraph_es_incident(&es, vertex_id, IGRAPH_ALL);
+    igraph_eit_create(&graph, es, &eit);
+
+    while (!IGRAPH_EIT_END(eit)) {
+        igraph_integer_t eid = IGRAPH_EIT_GET(eit);
+        betweenness_values.push_back(VECTOR(edge_betweenness)[eid]);
+        IGRAPH_EIT_NEXT(eit);
+    }
+
+    igraph_eit_destroy(&eit);
+    igraph_es_destroy(&es);
+
+    double sum = 0.0;
+    for (double val : betweenness_values) {
+        sum += (val * inter_chain_IDs[betweenness_values[val]] * weights[betweenness_values[val]]);
+    }
+
+    if (!betweenness_values.empty()) {
+        return sum / betweenness_values.size();
+    } else {
+        return 0.0;
+    }
+} */
+
 // GraphCentralityCalculator Class Definition
 class GraphCentralityCalculator {
     igraph_vector_t unw_edge_betweenness, dist_w_edge_betweenness, area_w_edge_betweenness;
+    std::map<igraph_integer_t, double> inter_chain_indicators;
     public:
         GraphCentralityCalculator(const std::vector<Interaction>& edges,
                                 const std::map<ResidueID, int>& vertex_map,
@@ -149,6 +340,10 @@ class GraphCentralityCalculator {
                 VECTOR(edge_vector)[2 * i] = static_cast<igraph_integer_t>(vertex_map.at(edges[i].id1));
                 VECTOR(edge_vector)[2 * i + 1] = static_cast<igraph_integer_t>(vertex_map.at(edges[i].id2));
                 VECTOR(distance_weight_vector)[i] = (dist_weights[i]);
+            }
+
+            for (size_t i = 0; i < edges.size(); ++i) {
+                inter_chain_indicators[i] = (edges[i].id1.chainID != edges[i].id2.chainID) ? 1.0 : 0.0;
             }
 
             // Create the graph
@@ -330,20 +525,29 @@ class GraphCentralityCalculator {
                 << prefix << "unweighted_Betweenness\t"
                 << prefix << "unweighted_PageRank\t"
                 << prefix << "unweighted_Eigenvector\t"
-                << prefix << "unweighted_av_Edge_Betweenness\t"
+                << prefix << "unweighted_s_av_Edge_Betweenness\t"
+                << prefix << "unweighted_i_av_Edge_Betweenness\t"
+                << prefix << "unweighted_w_av_Edge_Betweenness\t"
+                << prefix << "unweighted_b_av_Edge_Betweenness\t"
                 << prefix << "distance_weighted_Degree\t"
                 << prefix << "distance_weighted_Closeness\t"
                 << prefix << "distance_weighted_Betweenness\t"
                 << prefix << "distance_weighted_PageRank\t"
                 << prefix << "distance_weighted_Eigenvector\t"
-                << prefix << "distance_weighted_av_Edge_Betweenness";
+                << prefix << "distance_weighted_s_av_Edge_Betweenness\t"
+                << prefix << "distance_weighted_i_av_Edge_Betweenness\t"
+                << prefix << "distance_weighted_w_av_Edge_Betweenness\t"
+                << prefix << "distance_weighted_b_av_Edge_Betweenness";
             if (area_graph_initialized) {
                 output << "\t" << prefix << "area_weighted_Degree\t"
                     << prefix << "area_weighted_Closeness\t"
                     << prefix << "area_weighted_Betweenness\t"
                     << prefix << "area_weighted_PageRank\t"
                     << prefix << "area_weighted_Eigenvector\t"
-                    << prefix << "area_weighted_av_Edge_Betweenness";
+                    << prefix << "area_weighted_s_av_Edge_Betweenness\t"
+                    << prefix << "area_weighted_i_av_Edge_Betweenness\t"
+                    << prefix << "area_weighted_w_av_Edge_Betweenness\t"
+                    << prefix << "area_weighted_b_av_Edge_Betweenness";
             }
             output << "\n";
 
@@ -356,20 +560,29 @@ class GraphCentralityCalculator {
                     << VECTOR(unw_betweenness)[i] << "\t"
                     << VECTOR(unw_pagerank)[i] << "\t"
                     << VECTOR(unw_eigenvector)[i] << "\t"
-                    << calculateAverageEdgeBetweenness(graph, unw_edge_betweenness, i) << "\t"
+                    << calculateSimpleAverageEdgeBetweenness(graph, unw_edge_betweenness, i) << "\t"
+                    << calculateIndicatorAverageEdgeBetweenness(graph, unw_edge_betweenness, i, inter_chain_indicators) << "\t"
+                    << calculateSimpleAverageEdgeBetweenness(graph, unw_edge_betweenness, i) << "\t"
+                    << calculateIndicatorAverageEdgeBetweenness(graph, unw_edge_betweenness, i, inter_chain_indicators) << "\t"
                     << VECTOR(dist_w_degree)[i] << "\t"
                     << VECTOR(dist_w_closeness)[i] << "\t"
                     << VECTOR(dist_w_betweenness)[i] << "\t"
                     << VECTOR(dist_w_pagerank)[i] << "\t"
                     << VECTOR(dist_w_eigenvector)[i] << "\t"
-                    << calculateAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i);
+                    << calculateSimpleAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i) << "\t"
+                    << calculateIndicatorAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i, inter_chain_indicators) << "\t"
+                    << calculateWeightedAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i, distance_weight_vector) << "\t"
+                    << calculateCombinedAverageEdgeBetweenness(graph, dist_w_edge_betweenness, i, inter_chain_indicators, distance_weight_vector);
                 if (area_graph_initialized) {
                     output << "\t" << VECTOR(area_w_degree)[i] << "\t"
                                    << VECTOR(area_w_closeness)[i] << "\t"
                                    << VECTOR(area_w_betweenness)[i] << "\t"
                                    << VECTOR(area_w_pagerank)[i] << "\t"
                                    << VECTOR(area_w_eigenvector)[i] << "\t"
-                                   << calculateAverageEdgeBetweenness(graph, area_w_edge_betweenness, i);
+                                   << calculateSimpleAverageEdgeBetweenness(graph, area_w_edge_betweenness, i) << "\t"
+                                   << calculateIndicatorAverageEdgeBetweenness(graph, area_w_edge_betweenness, i, inter_chain_indicators) << "\t"
+                                   << calculateWeightedAverageEdgeBetweenness(graph, area_w_edge_betweenness, i, area_weight_vector) << "\t"
+                                   << calculateCombinedAverageEdgeBetweenness(graph, area_w_edge_betweenness, i, inter_chain_indicators, area_weight_vector);
                 }
                 output << "\n";
             }
@@ -430,6 +643,8 @@ int main(int argc, char* argv[]) {
         }
 
         std::vector<protcentr::Interaction> edges = protcentr::getInteractionsFromTSV(edges_input, min_seq_separator);
+
+        std::vector<double> inter_chain_indicators = protcentr::getIndicatorIDs(edges);
 
         std::vector<double> dist_weights = protcentr::getDistanceWeights(edges);
         std::vector<double> area_weights = protcentr::getAreaWeights(edges);
