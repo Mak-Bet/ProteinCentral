@@ -1,6 +1,7 @@
 # Load necessary libraries
 library(rpart)
 library(rpart.plot)
+library(PRROC)
 
 # Define file path
 file_path <- "/Users/makarbetlei/Documents/ProteinCentral/output/concatenated_final_table.tsv"
@@ -73,6 +74,7 @@ for (prefix in prefixes) {
         Specificity <- NA
         F1_score <- NA
         MCC <- NA
+        AUC_PR <- NA
       } else {
         # Calculate TP, TN, FP, FN
         tryCatch({
@@ -143,16 +145,29 @@ for (prefix in prefixes) {
           MCC <- NA
           warning("Error calculating MCC for column ", col_name, ": ", e$message)
         })
+
+        tryCatch({
+          scores <- data[[col_name]]
+          scores[is.na(scores)] <- 0
+          labels <- ifelse(abs(data$ddG) >= threshold, 1, 0)
+          pr_curve <- pr.curve(scores.class0 = scores, weights.class0 = labels, curve = TRUE)
+          AUC_PR <- pr_curve$auc.integral
+        }, warning = function(w) {
+          warning("Warning in AUC PR calculation for column ", col_name, ": ", w$message)
+        }, error = function(e) {
+          AUC_PR <- NA
+          warning("Error calculating AUC PR for column ", col_name, ": ", e$message)
+        })
       }
       
       # Store results in list
-      result_list[[measure]] <- c(TP, TN, FP, FN, PPV, NPV, Sensitivity, Specificity, F1_score, MCC)
+      result_list[[measure]] <- c(TP, TN, FP, FN, PPV, NPV, Sensitivity, Specificity, F1_score, MCC, AUC_PR)
     }
   }
   
   # Convert result list to data frame
   result_df <- as.data.frame(result_list)
-  rownames(result_df) <- c("TP", "TN", "FP", "FN", "PPV", "NPV", "Sensitivity", "Specificity", "F1_score", "MCC")
+  rownames(result_df) <- c("TP", "TN", "FP", "FN", "PPV", "NPV", "Sensitivity", "Specificity", "F1_score", "MCC", "AUC_PR")
   
 # Define output file path within the threshold directory
   output_file <- paste0(output_dir, "/", prefix, ".tsv")
