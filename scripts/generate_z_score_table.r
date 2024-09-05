@@ -11,8 +11,9 @@ merged_file_path <- file.path(base_path, "merged_centrality_measures.tsv")
 # Function to calculate z-scores for a vector
 calculate_z_scores <- function(x) {
   # Calculate the mean and standard deviation
-  mu <- mean(x, na.rm = TRUE)
-  sigma <- sd(x, na.rm = TRUE)
+  x_no_zeros <- x[x != 0]
+  mu <- mean(x_no_zeros, na.rm = TRUE)
+  sigma <- sd(x_no_zeros, na.rm = TRUE)
   
   # Calculate z-scores
   z_scores <- (x - mu) / sigma

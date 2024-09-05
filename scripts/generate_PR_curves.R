@@ -12,7 +12,7 @@ prefix <- args[1]
 thresholds <- c(2, 1.184, 0.592)
 
 # Key words that must be present in the column name
-key_words <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector", "av_Edge_Betweenness")
+key_words <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector", "s_av_Edge_Betweenness", "i_av_Edge_Betweenness", "w_av_Edge_Betweenness", "b_av_Edge_Betweenness")
 
 # Search for relevant columns containing both keywords and prefixes
 column_names <- grep(paste0("^", prefix, ".*(", paste(key_words, collapse = "|"), ")"), names(data), value = TRUE)
@@ -34,7 +34,7 @@ pdf(pdf_file_name, width = 15, height = 5)
 
 par(mfrow = c(1, length(thresholds)))
 
-colors <- c("blue","red", "green", "yellow", "purple", "orange")
+colors <- c("blue","red", "green", "yellow", "purple", "#FF0099", "#FF00CC", "#CC66FF", "#660066")
 
 # Plotting for each value of threshold
 for (threshold in thresholds) {

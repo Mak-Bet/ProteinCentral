@@ -49,7 +49,7 @@ output_dir <- paste0("/Users/makarbetlei/Documents/ProteinCentral/output/analysi
 dir.create(output_dir, showWarnings = FALSE)
 
 # Identify columns containing centrality measures
-centrality_measures <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector", "av_Edge_Betweenness")
+centrality_measures <- c("Degree", "Closeness", "Betweenness", "PageRank", "Eigenvector", "s_av_Edge_Betweenness", "i_av_Edge_Betweenness", "w_av_Edge_Betweenness", "b_av_Edge_Betweenness")
 centrality_cols <- grep(paste(centrality_measures, collapse="|"), names(data), value = TRUE)
 
 # Extract unique prefixes
