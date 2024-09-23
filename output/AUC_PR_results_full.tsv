@@ -1,3 +1,4 @@
+reference_threshold	centrality_name	PR_AUC
 threshold_0.592	sep1_tes_unweighted__Degree	0.745671658650038
 threshold_0.592	sep2_tes_unweighted__Degree	0.74519521107871
 threshold_0.592	sep2_dist_distance_weighted__Closeness	0.742072042983417
